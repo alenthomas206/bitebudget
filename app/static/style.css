@@ -1,4 +1,4 @@
-/* BiteBudget: "condiments" theme. Mustard page, receipt paper, ketchup for over budget. */
+/* Tally: mustard page, receipt paper, navy for needs, ketchup red for wants. */
 
 @font-face {
   font-family: "Bricolage Grotesque";
@@ -27,6 +27,8 @@
   --paper: #fffdf6;
   --ketchup: #d7263d;
   --pickle: #3a7d44;
+  --need: #1b1f3b;
+  --want: #d7263d;
   --font-body: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
   --font-receipt: "IBM Plex Mono", Consolas, monospace;
 }
@@ -102,9 +104,10 @@ button:hover, .button:hover { background: #2c3260; }
 .r-line { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; }
 .r-item { margin-bottom: 10px; }
 .r-bar { height: 5px; background: rgba(27, 31, 59, 0.08); }
-.r-bar span { display: block; height: 100%; background: var(--ink); }
-.r-bar .bar-delivery_fee, .r-bar .bar-service_fee { background: var(--ketchup); }
-.r-bar .bar-tip { background: var(--pickle); }
+.r-bar span { display: block; height: 100%; }
+.r-bar .need, .key.need { background: var(--need); }
+.r-bar .want, .key.want { background: var(--want); }
+.key { display: inline-block; width: 10px; height: 10px; margin-right: 8px; vertical-align: 0; }
 .r-rule { border-top: 2px dashed var(--ink); margin: 16px 0; }
 .r-total { font-weight: 600; font-size: 1.25rem; }
 .r-foot { text-align: center; color: var(--ink-soft); margin: 22px 0 0; }
@@ -253,8 +256,8 @@ pre { background: var(--paper); padding: 14px; border-radius: 10px; overflow-x: 
 
 /* ---------- V6: add order, recent orders, banners ---------- */
 .home .banner { max-width: 560px; margin-bottom: 16px; }
-.first-order { background: var(--paper); border-radius: 16px; padding: 22px 24px; max-width: 560px; }
-.first-order h2 { margin: 0; font-size: 1.35rem; letter-spacing: -0.02em; }
+.first-entry { background: var(--paper); border-radius: 16px; padding: 22px 24px; max-width: 560px; }
+.first-entry h2 { margin: 0; font-size: 1.35rem; letter-spacing: -0.02em; }
 .hint { color: var(--ink-soft); font-size: 0.92rem; margin: 4px 0 14px; }
 
 .add-form { display: flex; flex-direction: column; gap: 12px; }
@@ -318,3 +321,33 @@ pre { background: var(--paper); padding: 14px; border-radius: 10px; overflow-x: 
 .panel .error { margin: 0; max-width: none; }
 .nav-add { padding: 9px 18px; }
 .add-block { scroll-margin-top: 16px; }
+
+/* ---------- V7: Tally ---------- */
+.add-row { align-items: flex-end; }
+.add-row .amount { flex: 0 1 140px; }
+.add-row .amount input { font-family: var(--font-receipt); }
+.add-form select {
+  font: 1rem var(--font-body);
+  color: var(--ink);
+  padding: 9px 10px;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  background: #fff;
+  width: 100%;
+}
+.add-button { white-space: nowrap; }
+
+.chip {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  vertical-align: 2px;
+  color: #fff;
+}
+.chip.need { background: var(--need); }
+.chip.want { background: var(--want); }
+.recent li { grid-template-columns: 70px 1fr auto auto; }
+.places li { grid-template-columns: 190px 1fr 100px; }

@@ -1,49 +1,53 @@
 {% extends "base.html" %}
-{% block title %}Your delivery bill - BiteBudget{% endblock %}
+{% block title %}Your spending - Tally{% endblock %}
 {% block body_class %}report-page{% endblock %}
-{% block nav %}{% if sample %}<a href="/" class="nav-link">Track my own orders</a>{% elif mine %}<a href="#add-order" class="button nav-add">+ Add order</a>{% endif %}{% endblock %}
+{% block nav %}
+  {% if sample %}<a href="/" class="nav-link">Track my own spending</a>
+  {% elif mine %}<a href="#add-expense" class="button nav-add">+ Add expense</a>{% endif %}
+{% endblock %}
 {% block content %}
 <div class="report">
 
-  {% if stats.order_count %}
+  {% if stats.count %}
   <aside class="receipt">
-    <p class="r-head">BITEBUDGET</p>
+    <p class="r-head">TALLY</p>
     <p class="r-sub">
       {{ stats.first_date.strftime("%b %d, %Y") }} to {{ stats.last_date.strftime("%b %d, %Y") }}<br>
-      {% if filters.restaurant %}{{ filters.restaurant }} only{% else %}all restaurants{% endif %}
+      {% if filters.category %}{{ filters.category }} only{% else %}all categories{% endif %}
     </p>
 
-    {% set parts = [("Food", "subtotal"), ("Delivery fees", "delivery_fee"),
-                    ("Service fees", "service_fee"), ("Tips", "tip")] %}
-    {% for label, key in parts %}
+    {% for c in stats.categories %}
     <div class="r-item">
-      <div class="r-line"><span>{{ label }}</span><span>{{ stats.breakdown[key]|money }}</span></div>
-      <div class="r-bar"><span class="bar-{{ key }}" style="width: {{ stats.percents[key] }}%"></span></div>
+      <div class="r-line"><span>{{ c.name }}</span><span>{{ c.amount|money }}</span></div>
+      <div class="r-bar"><span class="{{ c.kind }}" style="width: {{ c.percent }}%"></span></div>
     </div>
     {% endfor %}
 
     <div class="r-rule"></div>
-    <div class="r-line r-total"><span>Total</span><span>{{ stats.total_spent|money }}</span></div>
+    <div class="r-line"><span><i class="key need"></i>Needs</span><span>{{ stats.needs|money }}</span></div>
+    <div class="r-line"><span><i class="key want"></i>Wants</span><span>{{ stats.wants|money }}</span></div>
     <div class="r-rule"></div>
-    <div class="r-line"><span>Orders</span><span>{{ stats.order_count }}</span></div>
-    <div class="r-line"><span>Average order</span><span>{{ stats.average_order|money }}</span></div>
-    <p class="r-foot">Fees and tips were
-      {{ 100 - stats.percents.subtotal }}% of what you paid.</p>
+    <div class="r-line r-total"><span>Total</span><span>{{ stats.total|money }}</span></div>
+    <div class="r-rule"></div>
+    <div class="r-line"><span>Expenses</span><span>{{ stats.count }}</span></div>
+    <div class="r-line"><span>Average</span><span>{{ stats.average|money }}</span></div>
+    <p class="r-foot">{{ stats.needs_percent }}% went to needs,
+      {{ 100 - stats.needs_percent }}% to wants.</p>
   </aside>
   {% endif %}
 
   <div class="panel">
     {% if sample %}
     <p class="banner">You're looking at made-up sample data.
-      <a href="/">Start tracking your own orders</a></p>
+      <a href="/">Start tracking your own spending</a></p>
     {% endif %}
 
     {% if notice %}<p class="banner done" role="status">{{ notice }}</p>{% endif %}
     {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
 
     {% if mine %}
-    <section class="block add-block" id="add-order">
-      <h2>Add an order</h2>
+    <section class="block add-block" id="add-expense">
+      <h2>Add an expense</h2>
       {% include "_add_form.html" %}
     </section>
     {% endif %}
@@ -51,16 +55,16 @@
     <form method="get" class="filters">
       <label>From <input type="date" name="start" value="{{ filters.start or '' }}"></label>
       <label>To <input type="date" name="end" value="{{ filters.end or '' }}"></label>
-      <label>Restaurant
-        <select name="restaurant">
-          <option value="">All restaurants</option>
-          {% for r in restaurants %}
-          <option value="{{ r }}" {% if r == filters.restaurant %}selected{% endif %}>{{ r }}</option>
+      <label>Category
+        <select name="category">
+          <option value="">All categories</option>
+          {% for name in CATEGORIES %}
+          <option {% if name == filters.category %}selected{% endif %}>{{ name }}</option>
           {% endfor %}
         </select>
       </label>
       <label>Monthly budget
-        <input type="number" name="budget" min="0" step="10" placeholder="e.g. 300"
+        <input type="number" name="budget" min="0" step="50" placeholder="e.g. 1800"
                value="{{ '%g'|format(filters.budget) if filters.budget else '' }}">
       </label>
       <div class="filter-actions">
@@ -69,7 +73,7 @@
       </div>
     </form>
 
-    {% if stats.order_count %}
+    {% if stats.count %}
 
       {% if stats.budget %}
       <p class="budget {% if stats.over_budget %}over{% else %}under{% endif %}">
@@ -86,15 +90,15 @@
       <section class="block">
         {% set by_week = stats.monthly|length <= 2 %}
         <h2>Spending by {{ "week" if by_week else "month" }}</h2>
-        {% if by_week and stats.budget %}<p class="hint">Your budget is monthly, so the line only shows on the monthly chart. It switches over once you have 3 months of orders.</p>{% endif %}
-        <div class="chart-box"><canvas id="monthChart"></canvas></div>
+        {% if by_week and stats.budget %}<p class="hint">Your budget is monthly, so the line only shows on the monthly chart. It switches over once you have 3 months of expenses.</p>{% endif %}
+        <div class="chart-box"><canvas id="spendChart"></canvas></div>
       </section>
 
       <section class="block">
-        <h2>Where it went</h2>
-        {% set top_amount = stats.top_restaurants[0][1] %}
+        <h2>Biggest expenses</h2>
+        {% set top_amount = stats.top_items[0][1] %}
         <ol class="places">
-          {% for name, amount in stats.top_restaurants %}
+          {% for name, amount in stats.top_items %}
           <li>
             <span class="place-name">{{ name }}</span>
             <span class="place-bar"><span style="width: {{ (amount / top_amount * 100)|round }}%"></span></span>
@@ -105,7 +109,7 @@
       </section>
 
       <section class="block tips">
-        <h2>Ways to save</h2>
+        <h2>Where you could save</h2>
         <ul>
           {% for tip in tips %}<li>{{ tip }}</li>{% endfor %}
         </ul>
@@ -113,38 +117,39 @@
 
     {% else %}
       <section class="empty">
-        <h2>No orders match these filters</h2>
-        <p>Try a wider date range or switch back to all restaurants.</p>
+        <h2>No expenses match these filters</h2>
+        <p>Try a wider date range or switch back to all categories.</p>
         <a href="?" class="button">Clear filters</a>
       </section>
     {% endif %}
 
     {% if mine %}
     <section class="block">
-      <h2>Recent orders</h2>
+      <h2>Recent expenses</h2>
       <ul class="recent">
-        {% for o in recent %}
+        {% for e in recent %}
         <li>
-          <span class="recent-when">{{ o.date.strftime("%b %d, %I:%M %p") }}</span>
-          <span class="recent-name">{{ o.restaurant }}</span>
-          <span class="recent-total">{{ o.total|money }}</span>
-          <form action="/orders/{{ o.id }}/delete" method="post">
-            <button type="submit" class="link-button" aria-label="Delete {{ o.restaurant }} order">Delete</button>
+          <span class="recent-when">{{ e.date.strftime("%b %d") }}</span>
+          <span class="recent-name">{{ e.description }}
+            <span class="chip {{ CATEGORIES.get(e.category, 'want') }}">{{ e.category }}</span></span>
+          <span class="recent-total">{{ e.amount|money }}</span>
+          <form action="/expenses/{{ e.id }}/delete" method="post">
+            <button type="submit" class="link-button" aria-label="Delete {{ e.description }}">Delete</button>
           </form>
         </li>
         {% endfor %}
       </ul>
       {% if all_count > recent|length %}
-      <p class="hint">Showing the latest {{ recent|length }} of {{ all_count }} orders.</p>
+      <p class="hint">Showing the latest {{ recent|length }} of {{ all_count }} expenses.</p>
       {% endif %}
     </section>
 
     <details class="block manage">
       <summary>Import a CSV or clear your data</summary>
       {% include "_import_form.html" %}
-      <form action="/orders/delete-all" method="post" class="danger"
-            onsubmit="return confirm('Delete all {{ all_count }} saved orders? This cannot be undone.');">
-        <button type="submit" class="danger-button">Delete all my orders</button>
+      <form action="/expenses/delete-all" method="post" class="danger"
+            onsubmit="return confirm('Delete all {{ all_count }} saved expenses? This cannot be undone.');">
+        <button type="submit" class="danger-button">Delete all my expenses</button>
       </form>
     </details>
     {% endif %}
@@ -153,47 +158,50 @@
 {% endblock %}
 
 {% block scripts %}
-{% if stats.order_count %}
+{% if stats.count %}
 <!-- Chart.js 4.6.1 is bundled locally so the charts work offline -->
 <script src="/static/vendor/chart.umd.min.js"></script>
 <script>
-  // with only 1-2 months of orders a weekly chart is more useful
+  // with only 1-2 months of data a weekly chart is more useful
   const byWeek = {{ (stats.monthly|length <= 2) | tojson }};
-  const monthly = byWeek ? {{ stats.weekly | tojson }} : {{ stats.monthly | tojson }};
+  const rows = byWeek ? {{ stats.weekly_split | tojson }} : {{ stats.monthly_split | tojson }};
   const budget = byWeek ? 0 : {{ (stats.budget or 0) | tojson }};
   const css = getComputedStyle(document.documentElement);
-  const ink = css.getPropertyValue("--ink").trim();
-  const ketchup = css.getPropertyValue("--ketchup").trim();
+  const color = name => css.getPropertyValue(name).trim();
 
-  Chart.defaults.font.family = css.getPropertyValue("--font-body").trim();
-  Chart.defaults.color = ink;
+  Chart.defaults.font.family = color("--font-body");
+  Chart.defaults.color = color("--ink");
+  const money = v => "$" + v.toLocaleString("en", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-  const datasets = [{
-    type: "bar", label: "Spent", data: monthly.map(m => m[1]),
-    // months over budget turn red
-    backgroundColor: monthly.map(m => budget && m[1] > budget ? ketchup : ink),
-    borderRadius: 4, maxBarThickness: 56
-  }];
+  const datasets = [
+    { type: "bar", label: "Needs", data: rows.map(r => r[1]), backgroundColor: color("--need"),
+      stack: "spend", maxBarThickness: 56 },
+    { type: "bar", label: "Wants", data: rows.map(r => r[2]), backgroundColor: color("--want"),
+      stack: "spend", maxBarThickness: 56 }
+  ];
   if (budget) {
-    datasets.push({ type: "line", label: "Budget", data: monthly.map(() => budget),
-                    borderColor: ketchup, borderDash: [6, 4], borderWidth: 2, pointRadius: 0 });
+    datasets.push({ type: "line", label: "Budget", data: rows.map(() => budget),
+                    borderColor: color("--ink"), borderDash: [6, 4], borderWidth: 2, pointRadius: 0,
+                    stack: "budget" });  // own stack so it isn't piled on top of the bars
   }
-  new Chart(document.getElementById("monthChart"), {
+  new Chart(document.getElementById("spendChart"), {
     data: {
-      labels: monthly.map(m => byWeek
-        ? "Week of " + new Date(m[0] + "T12:00").toLocaleString("en", { month: "short", day: "numeric" })
-        : new Date(m[0] + "-02").toLocaleString("en", { month: "short", year: "2-digit" })),
+      labels: rows.map(r => byWeek
+        ? "Week of " + new Date(r[0] + "T12:00").toLocaleString("en", { month: "short", day: "numeric" })
+        : new Date(r[0] + "-02").toLocaleString("en", { month: "short", year: "2-digit" })),
       datasets: datasets
     },
     options: {
       maintainAspectRatio: false,
       plugins: {
-        legend: { display: !!budget, labels: { filter: item => item.text === "Budget" } },
-        tooltip: { callbacks: { label: c => "$" + c.parsed.y.toLocaleString("en", { minimumFractionDigits: 2 }) } }
+        legend: { position: "bottom" },
+        tooltip: { callbacks: { label: c => c.dataset.label + ": " + money(c.parsed.y),
+                                footer: items => "Total: " + money(rows[items[0].dataIndex][1] + rows[items[0].dataIndex][2]) } }
       },
       scales: {
-        y: { ticks: { callback: v => "$" + v }, grid: { color: "rgba(27,31,59,.08)" } },
-        x: { grid: { display: false } }
+        y: { stacked: true, ticks: { callback: v => "$" + v.toLocaleString("en") },
+             grid: { color: "rgba(27,31,59,.08)" } },
+        x: { stacked: true, grid: { display: false } }
       }
     }
   });

@@ -1,76 +1,77 @@
-# BiteBudget 🍔
+# Tally
 
-A small web app that tracks how much you're actually spending on food delivery.
+A simple expense tracker that shows where your money actually goes, and where you could realistically save.
 
 ## Description
 
-Every time you order food (Uber Eats, DoorDash, Skip, etc.) you log it in BiteBudget in a few seconds: the restaurant, the food price, the fees and the tip. Your orders are saved on your computer, and BiteBudget turns them into a spending dashboard:
+Every time you spend money you log it in Tally in a few seconds: what it was, how much, a category and the date. Your expenses are saved on your computer, and Tally turns them into a dashboard:
 
-- total spent, number of orders and average order
-- a monthly spending chart
-- how much of your money went to food vs delivery fees, service fees and tips
-- your top 5 restaurants
-- savings tips based on your own orders
+- an itemized **receipt** of your spending by category
+- how much went to **needs** (rent, groceries, bills, transport, school, health) vs **wants** (eating out, shopping, fun, other)
+- a chart of your spending over time, split into needs and wants
+- your biggest expenses
+- savings tips based on your own spending
 
-You can filter by date range or restaurant and set a monthly budget to see which months you went over.
-
-If you already have an export file from a delivery app you can import it as a CSV, and there's a **demo with sample data** (140 made-up orders) to try the dashboard first.
+You can filter by date range or category and set a monthly budget to see which months you went over. If you have a CSV from your bank you can import it, and there's a **demo with six months of sample data** to try the dashboard first.
 
 ## Purpose
 
-I order food a lot, like most students, and I never really knew what it added up to. The apps show you one order at a time, not the total. I had already wanted to build an Uber Eats spending analyzer as a side project, so this assignment was a good excuse to actually build it. It's meant for students or anyone who orders delivery often and wants to cut back.
+This started as **BiteBudget**, an app for tracking food delivery spending, because I wanted to know what all my delivery orders added up to. After a few versions I realized two things. First, nobody actually has a CSV of their orders, so you need to be able to log things as you go. Second, a budgeting app that only looks at delivery is missing the big picture. If someone wants food brought to their house, that's their call. What matters is how it fits in with rent, groceries, bills and everything else.
+
+So it became Tally, a general expense tracker for students or anyone who wants to see their whole month. It deliberately leaves needs alone and focuses its tips on wants, since that's where savings realistically come from.
 
 ## Features
 
-- **Quick add form**: restaurant, time, food price, delivery fee, service fee and tip, with a live total and suggestions for restaurants you've ordered from before
-- **Saved orders** in a local SQLite database (`data/bitebudget.db`), so they're still there next time
-- **Recent orders** list with a delete button for mistakes, plus "delete all"
-- **Dashboard**: an itemized receipt, a spending chart (by week when you only have a month or two of orders, by month after that), top restaurants and savings tips
-- **CSV import** (optional) with checks: missing columns, wrong file types and bad dates show a clear error instead of crashing
-- **Filters** by date range and restaurant
-- **Monthly budget**: months over budget turn red on the chart and are listed with how much you went over
-- **Savings tips** worked out from your data (fees you'd skip by picking up, late night orders, your most ordered spot, small orders with high fees)
-- **Sample data** so the app can be tried without a real export
-- Accepts a few date formats (`2026-03-01 18:00`, `03/01/2026 6:00 PM`, ...) and CSVs saved from Excel
-- Works on phones, with an "Add order" button at the top that jumps to the form
+- **Quick add form**: description, amount, category and date. If you type something you've logged before (like "Phone bill"), the category is picked for you.
+- **10 categories** grouped into needs and wants
+- **Saved expenses** in a local SQLite database (`data/tally.db`), so they're still there next time
+- **Dashboard**: receipt by category, needs vs wants, a stacked spending chart (by week when you only have a month or two of data, by month after that), biggest expenses and savings tips
+- **Savings tips** that leave needs alone: wants compared with the 50/30/20 rule of thumb, your biggest want and what cutting it by a fifth would save, small purchases under $10 that add up, and this month vs last month (it says "so far" if the month isn't over)
+- **Filters** by date range and category
+- **Monthly budget**: shows which months went over and by how much, with a budget line on the chart
+- **Recent expenses** list with delete buttons, plus "delete all"
+- **CSV import** (optional) with clear errors for missing columns, wrong file types and bad dates. Accepts a few date formats, `$` and commas in amounts, and CSVs saved from Excel.
+- **Sample data demo** that doesn't touch your own data
+- Works on phones, with an "Add expense" button at the top that jumps to the form
+- Delivery orders saved by the old BiteBudget version are moved over automatically as "Eating out"
 
 ## Technologies
 
 - **Python 3.10+**
 - **FastAPI**: web server and routes
-- **SQLite** (Python's built-in `sqlite3`): saves your orders
+- **SQLite** (Python's built-in `sqlite3`): saves your expenses
 - **Jinja2**: HTML templates
 - **Chart.js 4.6.1**: charts (bundled in `app/static/vendor` so it works offline)
 - **Bricolage Grotesque** and **IBM Plex Mono** fonts (bundled in `app/static/fonts`, SIL Open Font License)
-- **pytest**: tests (15 tests)
-- Plain HTML and CSS, no frontend framework
+- **pytest**: tests (29 tests)
+- Plain HTML, CSS and a little JavaScript, no frontend framework
 
 ## AI Tools Used
 
-- **Claude (Anthropic)**: planning the app, generating and refactoring code, writing tests, debugging, and drafting documentation
+- **Claude (Anthropic)**: planning the app, generating and refactoring code, writing tests, debugging, design, and drafting documentation
 
 ## Project Structure
 
 ```
-bitebudget/
+bitebudget/                 # repo folder (the app was renamed from BiteBudget to Tally)
 ├── app/
-│   ├── main.py            # FastAPI routes (add/delete orders, import, dashboard)
-│   ├── db.py              # saving and loading orders (SQLite)
-│   ├── analysis.py        # CSV parsing, stats, budget check, savings tips
-│   ├── templates/         # pages plus the add-order and import forms
-│   └── static/            # CSS, fonts and bundled Chart.js
+│   ├── main.py             # FastAPI routes (add/delete expenses, import, dashboard, sample)
+│   ├── db.py               # saving and loading expenses (SQLite)
+│   ├── analysis.py         # categories, CSV parsing, totals, budget check, savings tips
+│   ├── templates/          # pages plus the add-expense and import forms
+│   └── static/             # CSS, fonts and bundled Chart.js
 ├── sample_data/
-│   └── sample_orders.csv  # 140 fake orders
+│   └── sample_expenses.csv # six months of made-up student expenses
 ├── scripts/
 │   └── make_sample_data.py
-├── data/                  # your saved orders (created on first run, not in git)
+├── data/                   # your saved expenses (created on first run, not in git)
 ├── tests/
-│   ├── conftest.py        # gives each test an empty database
+│   ├── conftest.py         # gives each test an empty database
 │   └── test_app.py
 ├── docs/screenshots/
 ├── requirements.txt
 ├── requirements-dev.txt
-└── PROMPT.md              # full log of how the app was built with AI
+└── PROMPT.md               # full log of how the app was built with AI
 ```
 
 ## Installation
@@ -100,9 +101,9 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-Open **http://127.0.0.1:8000** in your browser and add your first order, or click "See a demo with sample data".
+Open **http://127.0.0.1:8000** in your browser and add your first expense, or click "See a demo with six months of sample data".
 
-Your orders are saved in `data/bitebudget.db`. Delete that file to start fresh.
+Your expenses are saved in `data/tally.db`. Delete that file to start fresh.
 
 If you get `[WinError 10013] An attempt was made to access a socket...`, something else is already using port 8000. Use another port:
 
@@ -114,12 +115,13 @@ Then open http://127.0.0.1:8080.
 
 ### CSV import format (optional)
 
-Required columns: `date, restaurant, total`
-Optional columns: `subtotal, delivery_fee, service_fee, tip`
+Required columns: `date, description, amount`
+Optional column: `category` (one of Rent, Groceries, Bills, Transport, School, Health, Eating out, Shopping, Fun, Other; anything else becomes Other)
 
 ```
-date,restaurant,subtotal,delivery_fee,service_fee,tip,total
-2026-05-01 12:30,Burger Barn,18.50,2.99,2.78,3,27.27
+date,description,category,amount
+2026-11-01,Rent,Rent,850
+2026-11-08,Northside Market,Groceries,67.40
 ```
 
 ### Running the tests
@@ -131,48 +133,49 @@ python -m pytest
 
 ## How AI Was Used
 
-Almost all of the code was generated by AI from natural-language prompts, then run, tested and fixed in steps. The app was built in six versions (see the commit history):
+Almost all of the code was generated by AI from natural-language prompts, then run, tested and fixed in steps. The app went through seven versions (see the commit history), and the biggest changes came from me trying it and deciding it wasn't right yet:
 
-1. **V1**: basic upload and totals
+1. **V1**: upload a delivery order CSV, see totals
 2. **V2**: better design and charts
 3. **V3**: filters, budget and savings tips
 4. **V4**: tests, then fixes for every bug the tests found
 5. **V5**: full UI redesign after I ran it myself and thought it looked too simple
-6. **V6**: switched from "upload a CSV" to logging orders by hand and saving them, after I realized nobody actually has a CSV of their orders
+6. **V6**: log orders by hand and save them, because nobody has a CSV of their orders
+7. **V7**: renamed to **Tally** and turned into a general expense tracker, because budgeting is about all your spending, not just delivery
 
 The full prompt log is in [PROMPT.md](PROMPT.md). Three prompts that shaped the app the most:
 
-> **1.** "Build a FastAPI web app where I upload my food delivery order history as a CSV and it shows total spent, number of orders, average order and my top 5 restaurants. Include sample data so it can be tried without a real file."
+> **1.** "Write pytest tests for the parsing, the maths, the filters and the web pages, including edge cases like an empty file, a CSV with the wrong columns, other date formats and filters that match nothing. Then fix whatever fails."
 
-This gave the base app (V1) and the sample data generator.
+5 of the 15 tests failed at first. The app looked finished, but it crashed on empty files, other date formats and bad columns. Fixing those is what V4 is about.
 
-> **2.** "Write pytest tests for the parsing, the maths, the filters and the web pages, including edge cases like an empty file, a CSV with the wrong columns, other date formats and filters that match nothing. Then fix whatever fails."
+> **2.** "ok so this is v5 but now lets make it practical" ... "i mean who would carry a lot of csv for their data"
 
-5 of the 15 tests failed at first, and fixing them is what V4 is about.
+The AI first asked what "practical" meant and suggested options like reading real app exports. My answer changed the idea: instead of analyzing a file once, the app became a tracker where you log each entry and it's saved (V6).
 
-> **3.** "ok so this is v5 but now lets make it practical" ... "i mean who would carry a lot of csv for their data"
+> **3.** "see firstly a budgeting app is not just about delivery prices if people want it to their house they should pay it its a necessity this app should track all expence instead of making delivery the big picture"
 
-This was the biggest change. The AI first asked what "practical" meant and suggested options like reading real app exports. My answer changed the whole idea: instead of analyzing a file once, BiteBudget became a tracker where you log each order and it's saved (V6). Testing it caught a bug where deleting your last order sent you back to the welcome page with no "Order deleted" message.
+This turned BiteBudget into Tally (V7): categories, needs vs wants, and tips that leave necessities like rent alone. The old delivery orders were moved over automatically so no data was lost.
 
 ## Screenshots
 
-**Welcome page with the add-order form**
+**Welcome page with the add-expense form**
 
-![Home page](docs/screenshots/home.png)
+![Welcome page](docs/screenshots/home.png)
 
-**My orders dashboard** after logging 6 orders (weekly chart, recent orders with delete)
+**My dashboard** after a few weeks of logging (receipt, weekly chart, tips, recent expenses)
 
-![My orders](docs/screenshots/my-orders.png)
+![My dashboard](docs/screenshots/my-dashboard.png)
 
-**Sample data demo with a $700 monthly budget** (red months are over budget)
+**Six months of sample data with an $1,800 monthly budget**
 
-![Dashboard](docs/screenshots/dashboard.png)
+![Sample dashboard](docs/screenshots/dashboard.png)
 
-**Filtered to one restaurant and date range**
+**Filtered to one category** (Eating out)
 
 ![Filtered](docs/screenshots/filtered.png)
 
-**Clear error when the food price isn't a number** (what you typed is kept)
+**Clear error when the amount isn't a number** (what you typed is kept)
 
 ![Error](docs/screenshots/error.png)
 
@@ -182,12 +185,12 @@ This was the biggest change. The AI first asked what "practical" meant and sugge
 
 ## Future Improvements
 
-1. **Fill the form from a receipt.** Paste the order confirmation email or a screenshot of the receipt and have it read the restaurant, fees and tip automatically, so logging takes one step.
-2. **Accounts and hosting.** Right now it's one person's orders on one computer. Logins and putting it online would let you log orders from your phone anywhere.
-3. **Read real Uber Eats / DoorDash exports directly.** The CSV import needs my column names, so a real export has to be renamed first.
-4. **AI-written tips.** The savings tips are fixed rules. Sending the summary to an AI model (with the API key in an environment variable) could give more personal advice.
-5. **Export.** Download the report as a PDF or share a link.
-6. **Category tags.** Group restaurants into fast food, coffee, etc. to see which type of food costs the most.
+1. **Income and savings goals.** Track money coming in, not just going out, and set a goal like "save $500 by April" to see if you're on track.
+2. **Budgets per category.** A separate limit for eating out or shopping instead of one monthly number.
+3. **Recurring expenses.** Rent, phone and subscriptions could be added automatically each month instead of typed every time.
+4. **Fill the form from a receipt.** Take a photo of a receipt and have it read the store and amount automatically.
+5. **Accounts and hosting.** Right now it's one person's data on one computer. Logins and putting it online would let you log expenses from your phone anywhere.
+6. **AI-written tips.** The tips are fixed rules. Sending the summary to an AI model (with the API key in an environment variable) could give more personal advice.
 
 ## Vibe Coding Reflection
 
@@ -215,6 +218,8 @@ It was really fast at the boring setup parts. The whole first version (FastAPI r
 ### 4. How did your prompts evolve?
 
 Early prompts were broad, like "build an app that analyzes my delivery spending". Later prompts got much more specific: they named the exact bug (empty date fields cause a 422), listed the edge cases to test, and said exactly how something should look (months over budget in red with a dashed budget line). Specific prompts got the right result the first time; vague ones needed more back and forth.
+
+*[Add your own take: the biggest changes came from my own short prompts ("make it practical", "who would carry a lot of csv", "a budgeting app is not just about delivery"). They weren't technical at all, but they changed what the app is for.]*
 
 ### 5. What did you learn?
 

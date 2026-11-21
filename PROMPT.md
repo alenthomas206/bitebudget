@@ -186,3 +186,37 @@ I set it up on my own laptop. Two problems came up:
 4. On a phone, the add form was below the whole receipt, so a "+ Add order" button was added to the top bar that jumps to it.
 
 **Testing:** 26 tests pass. Logged 6 orders through the form in a real browser and checked the dashboard, the weekly chart, the error message and the phone layout.
+
+---
+
+## Step 10: V7, from delivery tracker to Tally
+
+**My prompt:**
+> see firstly a budgeting app is not just about delivery prices if people want it to their house they should pay it its a necessity this app should track all expence instead of making delivery the big picture
+
+**AI response:** It agreed and proposed turning the app into a general expense tracker with categories grouped into **needs** (rent, groceries, bills, transport, school, health) and **wants** (eating out, shopping, fun, other), with tips that only target wants. It pointed out that "BiteBudget" sounds food-specific and asked about renaming.
+
+> *(picked "Rename it")*
+>
+> if i change the name will i have to change repo and everything
+
+**AI response:** No. The app's name is just text in the code. The GitHub repo and the folder on my laptop can keep the name `bitebudget`, and if I ever rename the repo GitHub redirects the old URL.
+
+> tally is good
+
+**What the AI did:**
+- Renamed the app to **Tally** (logo, titles, receipt, README). The repo and folder stayed `bitebudget`.
+- New data model: an `expenses` table (date, description, category, amount) in `data/tally.db`
+- **Moved my old delivery orders over automatically** as "Eating out" expenses, one time only (marked with SQLite's `user_version`, so clearing my data later doesn't bring them back)
+- Add form: description, amount, category (grouped into needs and wants) and date. Typing something I've logged before picks its category automatically.
+- Receipt shows spending by category plus a needs and wants subtotal. The chart stacks needs and wants in each bar.
+- New tips: wants compared with the 50/30/20 rule of thumb, the biggest want and what cutting it by a fifth saves, small purchases under $10 that add up, and this month vs last month
+- CSV import now takes `date, description, amount` (+ optional `category`), and the old delivery CSV format still works
+- New sample data: six months of made-up student expenses (rent, transit pass, groceries, coffee, textbooks in September, ...)
+
+**Problems found:**
+1. **Month comparison was misleading.** Comparing November to October on November 21st said I spent "23% less", but November wasn't over. It now says "so far" when the latest month is the current one.
+2. **Budget line would stack on the bars.** With stacked bars in Chart.js, the budget line would have been added on top of the needs and wants. It was put in its own stack so it stays at the budget amount.
+3. A test failed because the page shows "doesn't" as `doesn&#39;t` (HTML escaping). The app was right and the test was wrong, so the test was fixed.
+
+**Testing:** 29 tests pass. Also tested the real upgrade path: started Tally with a V6 database containing 6 delivery orders. They showed up as "Eating out" expenses, then I added rent, transit, groceries, a phone bill, a movie and an online order through the form in a browser.

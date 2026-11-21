@@ -3,39 +3,44 @@
 {% block content %}
 <div class="home-grid">
   <section class="intro">
-    <h1>What did delivery really cost you?</h1>
-    <p class="lede">Log each order in a few seconds. BiteBudget adds up every fee,
-       every tip and every 1am craving, so you can see where the money goes.</p>
+    <h1>Where does your money actually go?</h1>
+    <p class="lede">Log what you spend as you go. Tally adds it up by category,
+       separates the things you need from the things you want, and shows you
+       where you could save.</p>
 
     {% if notice %}<p class="banner done" role="status">{{ notice }}</p>{% endif %}
     {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
 
-    <section class="first-order">
-      <h2>Add your last order</h2>
-      <p class="hint">Copy the numbers from the receipt in your delivery app.</p>
+    <section class="first-entry">
+      <h2>Add your first expense</h2>
+      <p class="hint">Start with something recent, like rent, groceries or a coffee.</p>
       {% include "_add_form.html" %}
     </section>
 
     <div class="other-ways">
-      <p>Just looking? <a href="/sample">See a demo with sample data</a></p>
+      <p>Just looking? <a href="/sample">See a demo with six months of sample data</a></p>
 
       <details class="import">
-        <summary>Have an export file from the app? Import a CSV</summary>
+        <summary>Have a CSV from your bank? Import it</summary>
         {% include "_import_form.html" %}
       </details>
     </div>
   </section>
 
   <aside class="receipt receipt-preview" aria-hidden="true">
-    <p class="r-head">BITEBUDGET</p>
-    <p class="r-sub">example receipt</p>
-    <div class="r-line"><span>Food</span><span>$3,394.99</span></div>
-    <div class="r-line"><span>Delivery fees</span><span>$416.60</span></div>
-    <div class="r-line"><span>Service fees</span><span>$509.18</span></div>
-    <div class="r-line"><span>Tips</span><span>$413.00</span></div>
+    <p class="r-head">TALLY</p>
+    <p class="r-sub">example: a student's six months</p>
+    <div class="r-line"><span>Rent</span><span>$5,950.00</span></div>
+    <div class="r-line"><span>Groceries</span><span>$1,928.72</span></div>
+    <div class="r-line"><span>Eating out</span><span>$1,403.63</span></div>
+    <div class="r-line"><span>Transport</span><span>$935.04</span></div>
+    <div class="r-line"><span>Bills</span><span>$595.00</span></div>
+    <div class="r-line"><span>4 more categories</span><span>$1,306.47</span></div>
     <div class="r-rule"></div>
-    <div class="r-line r-total"><span>Total</span><span>$4,733.77</span></div>
-    <p class="r-foot">140 orders, May to Nov 2026</p>
+    <div class="r-line"><span>Needs</span><span>$9,753.83</span></div>
+    <div class="r-line"><span>Wants</span><span>$2,365.03</span></div>
+    <div class="r-rule"></div>
+    <div class="r-line r-total"><span>Total</span><span>$12,118.86</span></div>
   </aside>
 </div>
 {% endblock %}

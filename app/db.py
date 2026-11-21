@@ -1,6 +1,6 @@
-"""Saves orders in a small SQLite database file so they're kept between visits.
+"""Saves expenses in a small SQLite database file so they're kept between visits.
 
-The file lives in data/bitebudget.db (ignored by git). Set the BITEBUDGET_DB
+The file lives in data/tally.db (ignored by git). Set the TALLY_DB
 environment variable to use a different file, e.g. for tests.
 """
 
@@ -9,11 +9,13 @@ import sqlite3
 from datetime import datetime
 from pathlib import Path
 
-DEFAULT_PATH = Path(__file__).resolve().parent.parent / "data" / "bitebudget.db"
+DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+DEFAULT_PATH = DATA_DIR / "tally.db"
+OLD_PATH = DATA_DIR / "bitebudget.db"   # from V6, when the app only tracked delivery orders
 
 
 def db_path():
-    return Path(os.environ.get("BITEBUDGET_DB", DEFAULT_PATH))
+    return Path(os.environ.get("TALLY_DB", DEFAULT_PATH))
 
 
 def connect():
@@ -22,72 +24,96 @@ def connect():
     conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row
     conn.execute("""
-        CREATE TABLE IF NOT EXISTS orders (
+        CREATE TABLE IF NOT EXISTS expenses (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             date TEXT NOT NULL,
-            restaurant TEXT NOT NULL,
-            subtotal REAL NOT NULL DEFAULT 0,
-            delivery_fee REAL NOT NULL DEFAULT 0,
-            service_fee REAL NOT NULL DEFAULT 0,
-            tip REAL NOT NULL DEFAULT 0,
-            total REAL NOT NULL
+            description TEXT NOT NULL,
+            category TEXT NOT NULL,
+            amount REAL NOT NULL
         )
     """)
+    _move_old_orders(conn)
     return conn
 
 
-def _row_to_order(row):
-    order = dict(row)
-    order["date"] = datetime.fromisoformat(order["date"])
-    return order
+def _move_old_orders(conn):
+    """One time only: copy delivery orders saved by V6 (BiteBudget) into expenses
+    as 'Eating out'. user_version marks that it's done, so clearing your expenses
+    later doesn't bring the old orders back."""
+    if conn.execute("PRAGMA user_version").fetchone()[0] >= 1:
+        return
+    if "TALLY_DB" not in os.environ and OLD_PATH.exists():
+        old = sqlite3.connect(OLD_PATH)
+        try:
+            rows = old.execute("SELECT date, restaurant, total FROM orders").fetchall()
+        except sqlite3.OperationalError:
+            rows = []
+        old.close()
+        conn.executemany(
+            "INSERT INTO expenses (date, description, category, amount) VALUES (?, ?, 'Eating out', ?)",
+            [(d[:10], r, t) for d, r, t in rows],
+        )
+    conn.execute("PRAGMA user_version = 1")
+    conn.commit()
 
 
-def add_order(order):
-    """Save one order (same dict shape as analysis.parse_orders) and return its id."""
+def _row_to_expense(row):
+    e = dict(row)
+    e["date"] = datetime.fromisoformat(e["date"])
+    return e
+
+
+def add_expense(expense):
+    """Save one expense and return its id."""
     with connect() as conn:
         cur = conn.execute(
-            "INSERT INTO orders (date, restaurant, subtotal, delivery_fee, service_fee, tip, total) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (order["date"].isoformat(timespec="minutes"), order["restaurant"],
-             order.get("subtotal", 0), order.get("delivery_fee", 0),
-             order.get("service_fee", 0), order.get("tip", 0), order["total"]),
+            "INSERT INTO expenses (date, description, category, amount) VALUES (?, ?, ?, ?)",
+            (expense["date"].date().isoformat(), expense["description"],
+             expense["category"], expense["amount"]),
         )
         return cur.lastrowid
 
 
-def add_orders(orders):
-    for order in orders:
-        add_order(order)
-    return len(orders)
+def add_expenses(expenses):
+    for e in expenses:
+        add_expense(e)
+    return len(expenses)
 
 
-def get_orders():
-    """All saved orders, oldest first."""
+def get_expenses():
+    """All saved expenses, oldest first."""
     with connect() as conn:
-        rows = conn.execute("SELECT * FROM orders ORDER BY date, id").fetchall()
-    return [_row_to_order(r) for r in rows]
+        rows = conn.execute("SELECT * FROM expenses ORDER BY date, id").fetchall()
+    return [_row_to_expense(r) for r in rows]
 
 
-def get_order(order_id):
+def get_expense(expense_id):
     with connect() as conn:
-        row = conn.execute("SELECT * FROM orders WHERE id = ?", (order_id,)).fetchone()
-    return _row_to_order(row) if row else None
+        row = conn.execute("SELECT * FROM expenses WHERE id = ?", (expense_id,)).fetchone()
+    return _row_to_expense(row) if row else None
 
 
-def delete_order(order_id):
+def delete_expense(expense_id):
     with connect() as conn:
-        conn.execute("DELETE FROM orders WHERE id = ?", (order_id,))
+        conn.execute("DELETE FROM expenses WHERE id = ?", (expense_id,))
 
 
 def delete_all():
     with connect() as conn:
-        conn.execute("DELETE FROM orders")
+        conn.execute("DELETE FROM expenses")
 
 
-def restaurant_names():
-    """Restaurants used before, most ordered first (for the suggestions list)."""
+def past_descriptions():
+    """Descriptions used before, most used first, each with the category it was last
+    saved under. The add form uses this to suggest a category as you type."""
     with connect() as conn:
-        rows = conn.execute(
-            "SELECT restaurant FROM orders GROUP BY restaurant ORDER BY COUNT(*) DESC"
-        ).fetchall()
-    return [r["restaurant"] for r in rows]
+        rows = conn.execute("""
+            SELECT description,
+                   (SELECT category FROM expenses e2 WHERE e2.description = e1.description
+                    ORDER BY id DESC LIMIT 1) AS category
+            FROM expenses e1
+            GROUP BY description
+            ORDER BY COUNT(*) DESC
+            LIMIT 50
+        """).fetchall()
+    return [(r["description"], r["category"]) for r in rows]
