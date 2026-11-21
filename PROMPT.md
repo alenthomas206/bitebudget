@@ -157,3 +157,32 @@ I set it up on my own laptop. Two problems came up:
 **Problem found:** On the phone layout, the receipt's torn-edge decoration showed up in the middle of the filter box. The mobile CSS changed the receipt from `sticky` to `static`, so the decoration lost its anchor. Changing it to `position: relative` fixed it.
 
 **Testing:** All 15 tests still pass. Checked desktop and phone screenshots, the error message and the empty filter state.
+
+---
+
+## Step 9: V6, making it practical
+
+**My prompt:**
+> ok so this is v5 but now lets make it practical
+
+**AI response:** It asked what "practical" should mean and gave options: read real Uber Eats/DoorDash export files, add orders by hand, save the data, or export a report.
+
+**My answer:**
+> i mean who would carry a lot of csv for their data
+
+**What the AI did:** It agreed the CSV-first idea doesn't match real life, since nobody keeps a CSV of their orders, and changed the app into an order tracker:
+- `app/db.py`: orders are saved in a SQLite database (`data/bitebudget.db`, added to `.gitignore` because it's personal data)
+- Quick add form: restaurant (with suggestions from past orders), time (defaults to now), food price, delivery fee, service fee and tip, plus a live total. The server works out the total again when saving.
+- The home page is now your own dashboard. With no orders yet, it shows a welcome page with the form.
+- Recent orders list with delete buttons, and "delete all" behind a confirm
+- CSV import still works but now adds to your saved orders. The sample data became a read-only demo.
+- Validation with clear messages ("The food price should be a number, like 12.50.") that keeps what you typed
+- Tests use a throwaway database (`tests/conftest.py`), and 11 new tests were added
+
+**Problems found:**
+1. The recent orders list used `%-I` in the time format, which works on Linux but **crashes on Windows**, and I run it on Windows. It was caught before running and changed to `%I`.
+2. A new test failed: **deleting your last order** sent you back to the welcome page and the "Order deleted" message disappeared. Fixed by showing messages on the welcome page too.
+3. After logging 6 orders by hand, "Spending by month" was a single bar because they were all in November. The chart now shows **spending by week** when there are only 1–2 months of orders.
+4. On a phone, the add form was below the whole receipt, so a "+ Add order" button was added to the top bar that jumps to it.
+
+**Testing:** 26 tests pass. Logged 6 orders through the form in a real browser and checked the dashboard, the weekly chart, the error message and the phone layout.

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Your delivery bill - BiteBudget{% endblock %}
 {% block body_class %}report-page{% endblock %}
-{% block nav %}<a href="/" class="nav-link">Upload a new file</a>{% endblock %}
+{% block nav %}{% if sample %}<a href="/" class="nav-link">Track my own orders</a>{% elif mine %}<a href="#add-order" class="button nav-add">+ Add order</a>{% endif %}{% endblock %}
 {% block content %}
 <div class="report">
 
@@ -33,6 +33,21 @@
   {% endif %}
 
   <div class="panel">
+    {% if sample %}
+    <p class="banner">You're looking at made-up sample data.
+      <a href="/">Start tracking your own orders</a></p>
+    {% endif %}
+
+    {% if notice %}<p class="banner done" role="status">{{ notice }}</p>{% endif %}
+    {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+
+    {% if mine %}
+    <section class="block add-block" id="add-order">
+      <h2>Add an order</h2>
+      {% include "_add_form.html" %}
+    </section>
+    {% endif %}
+
     <form method="get" class="filters">
       <label>From <input type="date" name="start" value="{{ filters.start or '' }}"></label>
       <label>To <input type="date" name="end" value="{{ filters.end or '' }}"></label>
@@ -69,7 +84,9 @@
       {% endif %}
 
       <section class="block">
-        <h2>Spending by month</h2>
+        {% set by_week = stats.monthly|length <= 2 %}
+        <h2>Spending by {{ "week" if by_week else "month" }}</h2>
+        {% if by_week and stats.budget %}<p class="hint">Your budget is monthly, so the line only shows on the monthly chart. It switches over once you have 3 months of orders.</p>{% endif %}
         <div class="chart-box"><canvas id="monthChart"></canvas></div>
       </section>
 
@@ -101,6 +118,36 @@
         <a href="?" class="button">Clear filters</a>
       </section>
     {% endif %}
+
+    {% if mine %}
+    <section class="block">
+      <h2>Recent orders</h2>
+      <ul class="recent">
+        {% for o in recent %}
+        <li>
+          <span class="recent-when">{{ o.date.strftime("%b %d, %I:%M %p") }}</span>
+          <span class="recent-name">{{ o.restaurant }}</span>
+          <span class="recent-total">{{ o.total|money }}</span>
+          <form action="/orders/{{ o.id }}/delete" method="post">
+            <button type="submit" class="link-button" aria-label="Delete {{ o.restaurant }} order">Delete</button>
+          </form>
+        </li>
+        {% endfor %}
+      </ul>
+      {% if all_count > recent|length %}
+      <p class="hint">Showing the latest {{ recent|length }} of {{ all_count }} orders.</p>
+      {% endif %}
+    </section>
+
+    <details class="block manage">
+      <summary>Import a CSV or clear your data</summary>
+      {% include "_import_form.html" %}
+      <form action="/orders/delete-all" method="post" class="danger"
+            onsubmit="return confirm('Delete all {{ all_count }} saved orders? This cannot be undone.');">
+        <button type="submit" class="danger-button">Delete all my orders</button>
+      </form>
+    </details>
+    {% endif %}
   </div>
 </div>
 {% endblock %}
@@ -110,8 +157,10 @@
 <!-- Chart.js 4.6.1 is bundled locally so the charts work offline -->
 <script src="/static/vendor/chart.umd.min.js"></script>
 <script>
-  const monthly = {{ stats.monthly | tojson }};
-  const budget = {{ (stats.budget or 0) | tojson }};
+  // with only 1-2 months of orders a weekly chart is more useful
+  const byWeek = {{ (stats.monthly|length <= 2) | tojson }};
+  const monthly = byWeek ? {{ stats.weekly | tojson }} : {{ stats.monthly | tojson }};
+  const budget = byWeek ? 0 : {{ (stats.budget or 0) | tojson }};
   const css = getComputedStyle(document.documentElement);
   const ink = css.getPropertyValue("--ink").trim();
   const ketchup = css.getPropertyValue("--ketchup").trim();
@@ -131,7 +180,9 @@
   }
   new Chart(document.getElementById("monthChart"), {
     data: {
-      labels: monthly.map(m => new Date(m[0] + "-02").toLocaleString("en", { month: "short", year: "2-digit" })),
+      labels: monthly.map(m => byWeek
+        ? "Week of " + new Date(m[0] + "T12:00").toLocaleString("en", { month: "short", day: "numeric" })
+        : new Date(m[0] + "-02").toLocaleString("en", { month: "short", year: "2-digit" })),
       datasets: datasets
     },
     options: {

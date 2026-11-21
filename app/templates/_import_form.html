@@ -1,0 +1,25 @@
+{# CSV import. Orders get added to your saved orders. #}
+<form action="/analyze" method="post" enctype="multipart/form-data" class="upload">
+  <label class="dropzone" id="dropzone">
+    <input type="file" name="file" accept=".csv" required id="file-input">
+    <span class="dz-title" id="dz-title">Choose a CSV file</span>
+    <span class="dz-hint">or drag it here</span>
+  </label>
+  <button type="submit">Import orders</button>
+  <p class="hint">Needs <code>date</code>, <code>restaurant</code> and <code>total</code> columns.
+     <code>subtotal</code>, <code>delivery_fee</code>, <code>service_fee</code> and
+     <code>tip</code> are optional.</p>
+</form>
+<script>
+  // show the chosen file name and highlight the box while dragging
+  (function () {
+    const input = document.getElementById("file-input");
+    const zone = document.getElementById("dropzone");
+    const title = document.getElementById("dz-title");
+    input.addEventListener("change", () => {
+      if (input.files.length) { title.textContent = input.files[0].name; zone.classList.add("has-file"); }
+    });
+    ["dragenter", "dragover"].forEach(e => zone.addEventListener(e, () => zone.classList.add("drag")));
+    ["dragleave", "drop"].forEach(e => zone.addEventListener(e, () => zone.classList.remove("drag")));
+  })();
+</script>

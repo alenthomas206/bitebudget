@@ -1,10 +1,10 @@
 # BiteBudget 🍔
 
-A small web app that shows you how much you're actually spending on food delivery.
+A small web app that tracks how much you're actually spending on food delivery.
 
 ## Description
 
-You upload your food delivery order history as a CSV file (Uber Eats, DoorDash, etc.) and BiteBudget turns it into a spending dashboard:
+Every time you order food (Uber Eats, DoorDash, Skip, etc.) you log it in BiteBudget in a few seconds: the restaurant, the food price, the fees and the tip. Your orders are saved on your computer, and BiteBudget turns them into a spending dashboard:
 
 - total spent, number of orders and average order
 - a monthly spending chart
@@ -14,7 +14,7 @@ You upload your food delivery order history as a CSV file (Uber Eats, DoorDash, 
 
 You can filter by date range or restaurant and set a monthly budget to see which months you went over.
 
-If you don't have a file you can click **Try it with sample data**, which loads 140 made-up orders.
+If you already have an export file from a delivery app you can import it as a CSV, and there's a **demo with sample data** (140 made-up orders) to try the dashboard first.
 
 ## Purpose
 
@@ -22,21 +22,23 @@ I order food a lot, like most students, and I never really knew what it added up
 
 ## Features
 
-- **CSV upload** with checks: missing columns, wrong file types and bad dates show a clear error instead of crashing
-- **Dashboard** with stat tiles, a monthly bar chart and a fees doughnut chart
+- **Quick add form**: restaurant, time, food price, delivery fee, service fee and tip, with a live total and suggestions for restaurants you've ordered from before
+- **Saved orders** in a local SQLite database (`data/bitebudget.db`), so they're still there next time
+- **Recent orders** list with a delete button for mistakes, plus "delete all"
+- **Dashboard**: an itemized receipt, a spending chart (by week when you only have a month or two of orders, by month after that), top restaurants and savings tips
+- **CSV import** (optional) with checks: missing columns, wrong file types and bad dates show a clear error instead of crashing
 - **Filters** by date range and restaurant
 - **Monthly budget**: months over budget turn red on the chart and are listed with how much you went over
 - **Savings tips** worked out from your data (fees you'd skip by picking up, late night orders, your most ordered spot, small orders with high fees)
 - **Sample data** so the app can be tried without a real export
 - Accepts a few date formats (`2026-03-01 18:00`, `03/01/2026 6:00 PM`, ...) and CSVs saved from Excel
-- Results shown as an itemized **receipt** (food, delivery fees, service fees, tips, total) next to the charts
-- Drag-and-drop upload box
-- Works on mobile screens
+- Works on phones, with an "Add order" button at the top that jumps to the form
 
 ## Technologies
 
 - **Python 3.10+**
 - **FastAPI**: web server and routes
+- **SQLite** (Python's built-in `sqlite3`): saves your orders
 - **Jinja2**: HTML templates
 - **Chart.js 4.6.1**: charts (bundled in `app/static/vendor` so it works offline)
 - **Bricolage Grotesque** and **IBM Plex Mono** fonts (bundled in `app/static/fonts`, SIL Open Font License)
@@ -52,15 +54,18 @@ I order food a lot, like most students, and I never really knew what it added up
 ```
 bitebudget/
 ├── app/
-│   ├── main.py            # FastAPI routes (upload, report, filters)
+│   ├── main.py            # FastAPI routes (add/delete orders, import, dashboard)
+│   ├── db.py              # saving and loading orders (SQLite)
 │   ├── analysis.py        # CSV parsing, stats, budget check, savings tips
-│   ├── templates/         # base, home and results pages
+│   ├── templates/         # pages plus the add-order and import forms
 │   └── static/            # CSS, fonts and bundled Chart.js
 ├── sample_data/
 │   └── sample_orders.csv  # 140 fake orders
 ├── scripts/
 │   └── make_sample_data.py
+├── data/                  # your saved orders (created on first run, not in git)
 ├── tests/
+│   ├── conftest.py        # gives each test an empty database
 │   └── test_app.py
 ├── docs/screenshots/
 ├── requirements.txt
@@ -95,7 +100,9 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-Open **http://127.0.0.1:8000** in your browser. Upload a CSV or click "Try it with sample data".
+Open **http://127.0.0.1:8000** in your browser and add your first order, or click "See a demo with sample data".
+
+Your orders are saved in `data/bitebudget.db`. Delete that file to start fresh.
 
 If you get `[WinError 10013] An attempt was made to access a socket...`, something else is already using port 8000. Use another port:
 
@@ -105,7 +112,7 @@ uvicorn app.main:app --reload --port 8080
 
 Then open http://127.0.0.1:8080.
 
-### CSV format
+### CSV import format (optional)
 
 Required columns: `date, restaurant, total`
 Optional columns: `subtotal, delivery_fee, service_fee, tip`
@@ -124,13 +131,14 @@ python -m pytest
 
 ## How AI Was Used
 
-Almost all of the code was generated by AI from natural-language prompts, then run, tested and fixed in steps. The app was built in four versions (see the commit history):
+Almost all of the code was generated by AI from natural-language prompts, then run, tested and fixed in steps. The app was built in six versions (see the commit history):
 
 1. **V1**: basic upload and totals
 2. **V2**: better design and charts
 3. **V3**: filters, budget and savings tips
 4. **V4**: tests, then fixes for every bug the tests found
 5. **V5**: full UI redesign after I ran it myself and thought it looked too simple
+6. **V6**: switched from "upload a CSV" to logging orders by hand and saving them, after I realized nobody actually has a CSV of their orders
 
 The full prompt log is in [PROMPT.md](PROMPT.md). Three prompts that shaped the app the most:
 
@@ -138,21 +146,25 @@ The full prompt log is in [PROMPT.md](PROMPT.md). Three prompts that shaped the 
 
 This gave the base app (V1) and the sample data generator.
 
-> **2.** "Add filters for date range and restaurant, a monthly budget that shows which months I went over, and savings tips based on my own orders like fees, late night orders and my most ordered restaurant."
-
-This turned it from a simple stats page into something useful (V3). It also introduced a bug: leaving the date boxes empty gave a 422 error.
-
-> **3.** "Write pytest tests for the parsing, the maths, the filters and the web pages, including edge cases like an empty file, a CSV with the wrong columns, other date formats and filters that match nothing. Then fix whatever fails."
+> **2.** "Write pytest tests for the parsing, the maths, the filters and the web pages, including edge cases like an empty file, a CSV with the wrong columns, other date formats and filters that match nothing. Then fix whatever fails."
 
 5 of the 15 tests failed at first, and fixing them is what V4 is about.
 
+> **3.** "ok so this is v5 but now lets make it practical" ... "i mean who would carry a lot of csv for their data"
+
+This was the biggest change. The AI first asked what "practical" meant and suggested options like reading real app exports. My answer changed the whole idea: instead of analyzing a file once, BiteBudget became a tracker where you log each order and it's saved (V6). Testing it caught a bug where deleting your last order sent you back to the welcome page with no "Order deleted" message.
+
 ## Screenshots
 
-**Home page**
+**Welcome page with the add-order form**
 
 ![Home page](docs/screenshots/home.png)
 
-**Dashboard with a $700 monthly budget** (red months are over budget)
+**My orders dashboard** after logging 6 orders (weekly chart, recent orders with delete)
+
+![My orders](docs/screenshots/my-orders.png)
+
+**Sample data demo with a $700 monthly budget** (red months are over budget)
 
 ![Dashboard](docs/screenshots/dashboard.png)
 
@@ -160,7 +172,7 @@ This turned it from a simple stats page into something useful (V3). It also intr
 
 ![Filtered](docs/screenshots/filtered.png)
 
-**Friendly error when the CSV has the wrong columns**
+**Clear error when the food price isn't a number** (what you typed is kept)
 
 ![Error](docs/screenshots/error.png)
 
@@ -170,11 +182,12 @@ This turned it from a simple stats page into something useful (V3). It also intr
 
 ## Future Improvements
 
-1. **Read real Uber Eats / DoorDash exports directly.** Right now the CSV needs my column names, so a real export has to be renamed first. Auto-detecting each app's format would make it much easier to use.
-2. **Save reports.** Uploads are only kept in memory, so they're gone when the server restarts. A small SQLite database would fix that and allow comparing months over time.
-3. **AI-written tips.** The savings tips are fixed rules. Sending the summary to an AI model (with the API key in an environment variable) could give more personal advice.
-4. **Export.** Download the report as a PDF or share a link.
-5. **Category tags.** Group restaurants into fast food, coffee, etc. to see which type of food costs the most.
+1. **Fill the form from a receipt.** Paste the order confirmation email or a screenshot of the receipt and have it read the restaurant, fees and tip automatically, so logging takes one step.
+2. **Accounts and hosting.** Right now it's one person's orders on one computer. Logins and putting it online would let you log orders from your phone anywhere.
+3. **Read real Uber Eats / DoorDash exports directly.** The CSV import needs my column names, so a real export has to be renamed first.
+4. **AI-written tips.** The savings tips are fixed rules. Sending the summary to an AI model (with the API key in an environment variable) could give more personal advice.
+5. **Export.** Download the report as a PDF or share a link.
+6. **Category tags.** Group restaurants into fast food, coffee, etc. to see which type of food costs the most.
 
 ## Vibe Coding Reflection
 

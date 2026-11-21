@@ -3,7 +3,7 @@
 import csv
 import io
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta
 
 REQUIRED_COLUMNS = ["date", "restaurant", "total"]
 FEE_COLUMNS = ["subtotal", "delivery_fee", "service_fee", "tip"]
@@ -88,6 +88,13 @@ def summarize(orders, budget=None):
     if budget:
         over_budget = [(m, round(amt - budget, 2)) for m, amt in months if amt > budget]
 
+    # spending per week (starting Monday), used when there are only 1-2 months of orders
+    by_week = defaultdict(float)
+    for o in orders:
+        monday = (o["date"] - timedelta(days=o["date"].weekday())).date()
+        by_week[monday] += o["total"]
+    weeks = [(d.isoformat(), round(amt, 2)) for d, amt in sorted(by_week.items())]
+
     # share of the total for each part of the bill (used on the receipt)
     bill_total = sum(breakdown.values())
     percents = {col: round(v / bill_total * 100) if bill_total else 0
@@ -103,6 +110,7 @@ def summarize(orders, budget=None):
         "average_order": round(total / len(orders), 2) if orders else 0,
         "top_restaurants": [(name, round(amt, 2)) for name, amt in top[:5]],
         "monthly": [(m, round(amt, 2)) for m, amt in months],
+        "weekly": weeks,
         "breakdown": breakdown,
         "budget": budget,
         "over_budget": over_budget,

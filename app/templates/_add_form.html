@@ -1,0 +1,53 @@
+{# Quick add form. Used on the welcome page and on the dashboard. #}
+<form action="/orders" method="post" class="add-form" id="add-form">
+  <div class="add-row">
+    <label class="grow">Restaurant
+      <input type="text" name="restaurant" list="restaurant-names" required maxlength="80"
+             placeholder="e.g. Burger Barn" value="{{ form.restaurant or '' }}" autocomplete="off">
+    </label>
+    <label>When
+      <input type="datetime-local" name="when" value="{{ form.when or now }}">
+    </label>
+  </div>
+  <datalist id="restaurant-names">
+    {% for n in names %}<option value="{{ n }}">{% endfor %}
+  </datalist>
+
+  <div class="add-row money-row">
+    <label>Food
+      <input type="text" inputmode="decimal" name="subtotal" required placeholder="0.00"
+             value="{{ form.subtotal or '' }}" data-part>
+    </label>
+    <label>Delivery fee
+      <input type="text" inputmode="decimal" name="delivery_fee" placeholder="0.00"
+             value="{{ form.delivery_fee or '' }}" data-part>
+    </label>
+    <label>Service fee
+      <input type="text" inputmode="decimal" name="service_fee" placeholder="0.00"
+             value="{{ form.service_fee or '' }}" data-part>
+    </label>
+    <label>Tip
+      <input type="text" inputmode="decimal" name="tip" placeholder="0.00"
+             value="{{ form.tip or '' }}" data-part>
+    </label>
+  </div>
+
+  <div class="add-footer">
+    <p class="add-total">Total <strong id="add-total">$0.00</strong></p>
+    <button type="submit">Add order</button>
+  </div>
+</form>
+<script>
+  // live total while typing (the server works it out again when saving)
+  (function () {
+    const parts = document.querySelectorAll("#add-form [data-part]");
+    const out = document.getElementById("add-total");
+    function update() {
+      let sum = 0;
+      parts.forEach(p => { const v = parseFloat(p.value.replace(/[$,]/g, "")); if (!isNaN(v)) sum += v; });
+      out.textContent = "$" + sum.toLocaleString("en", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    parts.forEach(p => p.addEventListener("input", update));
+    update();
+  })();
+</script>

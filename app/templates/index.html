@@ -4,29 +4,26 @@
 <div class="home-grid">
   <section class="intro">
     <h1>What did delivery really cost you?</h1>
-    <p class="lede">Drop in your order history and get the full bill: every fee,
-       every tip and every 1am craving, added up.</p>
+    <p class="lede">Log each order in a few seconds. BiteBudget adds up every fee,
+       every tip and every 1am craving, so you can see where the money goes.</p>
 
+    {% if notice %}<p class="banner done" role="status">{{ notice }}</p>{% endif %}
     {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
 
-    <form action="/analyze" method="post" enctype="multipart/form-data" class="upload">
-      <label class="dropzone" id="dropzone">
-        <input type="file" name="file" accept=".csv" required id="file-input">
-        <span class="dz-title" id="dz-title">Choose a CSV file</span>
-        <span class="dz-hint">or drag it here</span>
-      </label>
-      <button type="submit">Analyze my orders</button>
-    </form>
-    <p class="alt">No file yet? <a href="/sample">Try it with sample data</a></p>
+    <section class="first-order">
+      <h2>Add your last order</h2>
+      <p class="hint">Copy the numbers from the receipt in your delivery app.</p>
+      {% include "_add_form.html" %}
+    </section>
 
-    <details class="format">
-      <summary>What should the CSV look like?</summary>
-      <p>It needs <code>date</code>, <code>restaurant</code> and <code>total</code> columns.
-         Adding <code>subtotal</code>, <code>delivery_fee</code>, <code>service_fee</code>
-         and <code>tip</code> unlocks the fee breakdown.</p>
-      <pre>date,restaurant,subtotal,delivery_fee,service_fee,tip,total
-2026-05-01 12:30,Burger Barn,18.50,2.99,2.78,3,27.27</pre>
-    </details>
+    <div class="other-ways">
+      <p>Just looking? <a href="/sample">See a demo with sample data</a></p>
+
+      <details class="import">
+        <summary>Have an export file from the app? Import a CSV</summary>
+        {% include "_import_form.html" %}
+      </details>
+    </div>
   </section>
 
   <aside class="receipt receipt-preview" aria-hidden="true">
@@ -41,18 +38,4 @@
     <p class="r-foot">140 orders, May to Nov 2026</p>
   </aside>
 </div>
-{% endblock %}
-
-{% block scripts %}
-<script>
-  // show the chosen file name and highlight the box while dragging
-  const input = document.getElementById("file-input");
-  const zone = document.getElementById("dropzone");
-  const title = document.getElementById("dz-title");
-  input.addEventListener("change", () => {
-    if (input.files.length) { title.textContent = input.files[0].name; zone.classList.add("has-file"); }
-  });
-  ["dragenter", "dragover"].forEach(e => zone.addEventListener(e, () => zone.classList.add("drag")));
-  ["dragleave", "drop"].forEach(e => zone.addEventListener(e, () => zone.classList.remove("drag")));
-</script>
 {% endblock %}

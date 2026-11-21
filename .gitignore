@@ -6,3 +6,6 @@ venv/
 .pytest_cache/
 .vscode/
 .DS_Store
+
+# your saved orders (personal data)
+data/
