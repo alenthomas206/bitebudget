@@ -1,85 +1,108 @@
 {% extends "base.html" %}
-{% block title %}Your spending - BiteBudget{% endblock %}
+{% block title %}Your delivery bill - BiteBudget{% endblock %}
+{% block body_class %}report-page{% endblock %}
+{% block nav %}<a href="/" class="nav-link">Upload a new file</a>{% endblock %}
 {% block content %}
-<h1>Your spending</h1>
+<div class="report">
 
-<form method="get" class="card filters">
-  <label>From <input type="date" name="start" value="{{ filters.start or '' }}"></label>
-  <label>To <input type="date" name="end" value="{{ filters.end or '' }}"></label>
-  <label>Restaurant
-    <select name="restaurant">
-      <option value="">All restaurants</option>
-      {% for r in restaurants %}
-      <option value="{{ r }}" {% if r == filters.restaurant %}selected{% endif %}>{{ r }}</option>
-      {% endfor %}
-    </select>
-  </label>
-  <label>Monthly budget ($)
-    <input type="number" name="budget" min="0" step="10" placeholder="e.g. 300"
-           value="{{ '%g'|format(filters.budget) if filters.budget else '' }}">
-  </label>
-  <button type="submit">Apply</button>
-  <a href="?" class="muted">Reset</a>
-</form>
+  {% if stats.order_count %}
+  <aside class="receipt">
+    <p class="r-head">BITEBUDGET</p>
+    <p class="r-sub">
+      {{ stats.first_date.strftime("%b %d, %Y") }} to {{ stats.last_date.strftime("%b %d, %Y") }}<br>
+      {% if filters.restaurant %}{{ filters.restaurant }} only{% else %}all restaurants{% endif %}
+    </p>
 
-{% if stats.budget %}
-<section class="card budget {% if stats.over_budget %}over{% else %}under{% endif %}">
-  {% if stats.over_budget %}
-    <strong>Over budget in {{ stats.over_budget|length }} month(s):</strong>
-    {% for month, extra in stats.over_budget %}
-      {{ month }} (+{{ extra|money }}){% if not loop.last %}, {% endif %}
+    {% set parts = [("Food", "subtotal"), ("Delivery fees", "delivery_fee"),
+                    ("Service fees", "service_fee"), ("Tips", "tip")] %}
+    {% for label, key in parts %}
+    <div class="r-item">
+      <div class="r-line"><span>{{ label }}</span><span>{{ stats.breakdown[key]|money }}</span></div>
+      <div class="r-bar"><span class="bar-{{ key }}" style="width: {{ stats.percents[key] }}%"></span></div>
+    </div>
     {% endfor %}
-  {% else %}
-    <strong>Nice!</strong> You stayed under {{ stats.budget|money }} every month.
+
+    <div class="r-rule"></div>
+    <div class="r-line r-total"><span>Total</span><span>{{ stats.total_spent|money }}</span></div>
+    <div class="r-rule"></div>
+    <div class="r-line"><span>Orders</span><span>{{ stats.order_count }}</span></div>
+    <div class="r-line"><span>Average order</span><span>{{ stats.average_order|money }}</span></div>
+    <p class="r-foot">Fees and tips were
+      {{ 100 - stats.percents.subtotal }}% of what you paid.</p>
+  </aside>
   {% endif %}
-</section>
-{% endif %}
 
-{% if stats.order_count %}
-<div class="stats">
-  <div class="stat"><span class="label">Total spent</span>
-    <span class="value">{{ stats.total_spent|money }}</span></div>
-  <div class="stat"><span class="label">Orders</span>
-    <span class="value">{{ stats.order_count }}</span></div>
-  <div class="stat"><span class="label">Average order</span>
-    <span class="value">{{ stats.average_order|money }}</span></div>
+  <div class="panel">
+    <form method="get" class="filters">
+      <label>From <input type="date" name="start" value="{{ filters.start or '' }}"></label>
+      <label>To <input type="date" name="end" value="{{ filters.end or '' }}"></label>
+      <label>Restaurant
+        <select name="restaurant">
+          <option value="">All restaurants</option>
+          {% for r in restaurants %}
+          <option value="{{ r }}" {% if r == filters.restaurant %}selected{% endif %}>{{ r }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>Monthly budget
+        <input type="number" name="budget" min="0" step="10" placeholder="e.g. 300"
+               value="{{ '%g'|format(filters.budget) if filters.budget else '' }}">
+      </label>
+      <div class="filter-actions">
+        <button type="submit">Apply</button>
+        <a href="?" class="reset">Clear</a>
+      </div>
+    </form>
+
+    {% if stats.order_count %}
+
+      {% if stats.budget %}
+      <p class="budget {% if stats.over_budget %}over{% else %}under{% endif %}">
+        {% if stats.over_budget %}
+          Over your {{ stats.budget|money }} budget in {{ stats.over_budget|length }}
+          of {{ stats.monthly|length }} months:
+          {% for month, extra in stats.over_budget %}{{ month|month }} by {{ extra|money }}{% if not loop.last %}, {% endif %}{% endfor %}.
+        {% else %}
+          You stayed under {{ stats.budget|money }} every month.
+        {% endif %}
+      </p>
+      {% endif %}
+
+      <section class="block">
+        <h2>Spending by month</h2>
+        <div class="chart-box"><canvas id="monthChart"></canvas></div>
+      </section>
+
+      <section class="block">
+        <h2>Where it went</h2>
+        {% set top_amount = stats.top_restaurants[0][1] %}
+        <ol class="places">
+          {% for name, amount in stats.top_restaurants %}
+          <li>
+            <span class="place-name">{{ name }}</span>
+            <span class="place-bar"><span style="width: {{ (amount / top_amount * 100)|round }}%"></span></span>
+            <span class="place-amount">{{ amount|money }}</span>
+          </li>
+          {% endfor %}
+        </ol>
+      </section>
+
+      <section class="block tips">
+        <h2>Ways to save</h2>
+        <ul>
+          {% for tip in tips %}<li>{{ tip }}</li>{% endfor %}
+        </ul>
+      </section>
+
+    {% else %}
+      <section class="empty">
+        <h2>No orders match these filters</h2>
+        <p>Try a wider date range or switch back to all restaurants.</p>
+        <a href="?" class="button">Clear filters</a>
+      </section>
+    {% endif %}
+  </div>
 </div>
-
-<div class="grid">
-  <section class="card wide">
-    <h2>Spending by month</h2>
-    <canvas id="monthChart"></canvas>
-  </section>
-  <section class="card">
-    <h2>Where the money goes</h2>
-    <canvas id="feeChart"></canvas>
-  </section>
-  <section class="card">
-    <h2>Top restaurants</h2>
-    <table>
-      <tr><th>Restaurant</th><th class="num">Spent</th></tr>
-      {% for name, amount in stats.top_restaurants %}
-      <tr><td>{{ name }}</td><td class="num">{{ amount|money }}</td></tr>
-      {% endfor %}
-    </table>
-  </section>
-</div>
-
-<section class="card tips">
-  <h2>💡 Ways to save</h2>
-  <ul>
-    {% for tip in tips %}<li>{{ tip }}</li>{% endfor %}
-  </ul>
-</section>
-
-{% else %}
-<section class="card empty">
-  <h2>No orders match these filters</h2>
-  <p class="muted">Try a wider date range or pick "All restaurants".</p>
-</section>
-{% endif %}
-
-<p><a href="/" class="button-link">← Upload another file</a></p>
 {% endblock %}
 
 {% block scripts %}
@@ -88,33 +111,39 @@
 <script src="/static/vendor/chart.umd.min.js"></script>
 <script>
   const monthly = {{ stats.monthly | tojson }};
-  const breakdown = {{ stats.breakdown | tojson }};
-
   const budget = {{ (stats.budget or 0) | tojson }};
+  const css = getComputedStyle(document.documentElement);
+  const ink = css.getPropertyValue("--ink").trim();
+  const ketchup = css.getPropertyValue("--ketchup").trim();
+
+  Chart.defaults.font.family = css.getPropertyValue("--font-body").trim();
+  Chart.defaults.color = ink;
+
   const datasets = [{
-    type: "bar", label: "Spent ($)", data: monthly.map(m => m[1]),
+    type: "bar", label: "Spent", data: monthly.map(m => m[1]),
     // months over budget turn red
-    backgroundColor: monthly.map(m => budget && m[1] > budget ? "#ef4444" : "#f97316")
+    backgroundColor: monthly.map(m => budget && m[1] > budget ? ketchup : ink),
+    borderRadius: 4, maxBarThickness: 56
   }];
   if (budget) {
     datasets.push({ type: "line", label: "Budget", data: monthly.map(() => budget),
-                    borderColor: "#1f2937", borderDash: [6, 4], pointRadius: 0 });
+                    borderColor: ketchup, borderDash: [6, 4], borderWidth: 2, pointRadius: 0 });
   }
   new Chart(document.getElementById("monthChart"), {
-    data: { labels: monthly.map(m => m[0]), datasets: datasets },
-    options: { plugins: { legend: { display: !!budget,
-      labels: { filter: item => item.text === "Budget" } } } }
-  });
-
-  new Chart(document.getElementById("feeChart"), {
-    type: "doughnut",
     data: {
-      labels: ["Food", "Delivery fees", "Service fees", "Tips"],
-      datasets: [{
-        data: [breakdown.subtotal, breakdown.delivery_fee,
-               breakdown.service_fee, breakdown.tip],
-        backgroundColor: ["#f97316", "#ef4444", "#a855f7", "#22c55e"]
-      }]
+      labels: monthly.map(m => new Date(m[0] + "-02").toLocaleString("en", { month: "short", year: "2-digit" })),
+      datasets: datasets
+    },
+    options: {
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: !!budget, labels: { filter: item => item.text === "Budget" } },
+        tooltip: { callbacks: { label: c => "$" + c.parsed.y.toLocaleString("en", { minimumFractionDigits: 2 }) } }
+      },
+      scales: {
+        y: { ticks: { callback: v => "$" + v }, grid: { color: "rgba(27,31,59,.08)" } },
+        x: { grid: { display: false } }
+      }
     }
   });
 </script>

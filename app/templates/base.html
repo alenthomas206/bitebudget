@@ -6,12 +6,12 @@
   <title>{% block title %}BiteBudget{% endblock %}</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
   <header class="topbar">
-    <a href="/" class="logo">🍔 BiteBudget</a>
-    <span class="tagline">see where your delivery money goes</span>
+    <a href="/" class="logo">BiteBudget</a>
+    {% block nav %}{% endblock %}
   </header>
-  <main class="container">
+  <main>
     {% block content %}{% endblock %}
   </main>
   {% block scripts %}{% endblock %}

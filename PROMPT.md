@@ -130,3 +130,30 @@ The failing tests were committed first so the history shows the bugs before the 
 > Write the README with all the sections from the assignment, take screenshots of the app working, and write this PROMPT.md log.
 
 Screenshots were taken with a headless browser against the running app (`docs/screenshots/`).
+
+---
+
+## Step 7: Running it myself (next day)
+
+I set it up on my own laptop. Two problems came up:
+
+1. I ran `pip install -r requirements.txt` before creating the virtual environment, so the packages went into my main Python. Fixed by creating `.venv`, activating it and installing again.
+2. `uvicorn app.main:app --reload` failed with **`[WinError 10013] An attempt was made to access a socket in a way forbidden by its access permissions`**. Port 8000 was already being used by another project I had running in Docker. Running with `--port 8080` fixed it, and the README now explains this.
+
+---
+
+## Step 8: V5, redesign
+
+**My prompt:**
+> Ok it runs the ui look to simple fix it
+
+**What the AI did:**
+- Proposed a design idea first: since the app is about delivery bills, show the results as one big itemized **receipt** with a torn paper edge, using a "condiments" colour scheme (mustard background, ketchup red for over budget, pickle green for savings)
+- New fonts (Bricolage Grotesque for headings, IBM Plex Mono for the receipt), bundled locally like Chart.js
+- Home page: big headline, drag-and-drop upload box and an example receipt built from the real sample data numbers
+- Results: receipt pinned on the left with a bar for each part of the bill; on the right, the filters, the monthly chart, top restaurants as bars and the savings tips
+- Months show as "May 2026" instead of "2026-05", and the tips use thousands separators
+
+**Problem found:** On the phone layout, the receipt's torn-edge decoration showed up in the middle of the filter box. The mobile CSS changed the receipt from `sticky` to `static`, so the decoration lost its anchor. Changing it to `position: relative` fixed it.
+
+**Testing:** All 15 tests still pass. Checked desktop and phone screenshots, the error message and the empty filter state.

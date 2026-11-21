@@ -88,8 +88,17 @@ def summarize(orders, budget=None):
     if budget:
         over_budget = [(m, round(amt - budget, 2)) for m, amt in months if amt > budget]
 
+    # share of the total for each part of the bill (used on the receipt)
+    bill_total = sum(breakdown.values())
+    percents = {col: round(v / bill_total * 100) if bill_total else 0
+                for col, v in breakdown.items()}
+    dates = [o["date"] for o in orders]
+
     return {
         "order_count": len(orders),
+        "first_date": min(dates) if dates else None,
+        "last_date": max(dates) if dates else None,
+        "percents": percents,
         "total_spent": round(total, 2),
         "average_order": round(total / len(orders), 2) if orders else 0,
         "top_restaurants": [(name, round(amt, 2)) for name, amt in top[:5]],
@@ -112,9 +121,9 @@ def savings_tips(orders):
     fees = sum(o["delivery_fee"] + o["service_fee"] for o in orders)
     if fees > 0 and total > 0:
         tips.append(
-            f"You paid ${fees:.2f} in delivery and service fees "
+            f"You paid ${fees:,.2f} in delivery and service fees "
             f"({fees / total * 100:.0f}% of everything you spent). "
-            f"Picking up even half your orders would save about ${fees / 2 / months:.2f} a month."
+            f"Picking up even half your orders would save about ${fees / 2 / months:,.2f} a month."
         )
 
     # 2. late night ordering
@@ -122,7 +131,7 @@ def savings_tips(orders):
     if late:
         late_total = sum(o["total"] for o in late)
         tips.append(
-            f"{len(late)} orders were placed between 10pm and 4am, costing ${late_total:.2f}. "
+            f"{len(late)} orders were placed between 10pm and 4am, costing ${late_total:,.2f}. "
             "Having snacks at home for late nights could cut a lot of these."
         )
 
@@ -134,8 +143,8 @@ def savings_tips(orders):
     fav, (n, spent) = max(counts.items(), key=lambda x: x[1][0])
     if n >= 3:
         tips.append(
-            f"Your most ordered spot is {fav} ({n} orders, ${spent:.2f}). "
-            f"Skipping 1 in 3 of those orders would save about ${spent / 3 / months:.2f} a month."
+            f"Your most ordered spot is {fav} ({n} orders, ${spent:,.2f}). "
+            f"Skipping 1 in 3 of those orders would save about ${spent / 3 / months:,.2f} a month."
         )
 
     # 4. small orders where fees eat a big chunk

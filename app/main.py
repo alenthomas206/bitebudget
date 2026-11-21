@@ -1,5 +1,5 @@
 import uuid
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 from typing import Optional
 
@@ -18,6 +18,8 @@ app.mount("/static", StaticFiles(directory=BASE / "static"), name="static")
 templates = Jinja2Templates(directory=BASE / "templates")
 # money filter: 4733.77 -> $4,733.77
 templates.env.filters["money"] = lambda x: f"${x:,.2f}"
+# month filter: "2026-05" -> "May 2026"
+templates.env.filters["month"] = lambda m: datetime.strptime(m, "%Y-%m").strftime("%b %Y")
 
 # Uploaded order lists are kept in memory so the filters can re-use them.
 # They disappear when the server restarts.
