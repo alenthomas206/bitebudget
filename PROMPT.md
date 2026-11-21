@@ -1,0 +1,132 @@
+# PROMPT.md: Development Log
+
+This is the full log of how BiteBudget was built with AI (Claude). Each step lists the prompt or request, what the AI produced, and what happened when it was run and tested. The matching commits are in the GitHub history.
+
+**How this was run:** Step 0 is my own messages. After that I had Claude build the app as an agent on my laptop while I was away, one version at a time. The prompts in Steps 1–6 are the instructions for each step, which Claude wrote based on my request and the assignment brief and then carried out. Whenever something broke, the follow-up prompt describes the bug that was found and what to do about it.
+
+---
+
+## Step 0: Getting started
+
+**Prompt:**
+> Since u have access to my lap there is a vibe coding assignment that needs to be done
+>
+> *(attached the assignment PDF)*
+
+**Follow-up answers to the AI's questions:**
+> - App idea: no preference
+> - Due: tomorrow
+> - Stack: Python + Flask/FastAPI
+
+**AI response:** Suggested a food delivery spending analyzer called **BiteBudget**, because I already wanted to build an Uber Eats spending analyzer. It planned four versions to match the assignment's iteration requirement: basic app → better UI → new features → tests and fixes.
+
+> okay so lets begin
+
+---
+
+## Step 1: V1, basic working app
+
+**Prompt:**
+> Build a FastAPI web app where I upload my food delivery order history as a CSV and it shows total spent, number of orders, average order and my top 5 restaurants. Include sample data so it can be tried without a real file.
+
+**What AI generated:**
+- `app/main.py`: routes for the home page, `POST /analyze` (upload) and `/sample`
+- `app/analysis.py`: `parse_orders()` with the `csv` module and `summarize()` for the totals
+- `scripts/make_sample_data.py`: generates 140 fake orders over 6 months, weighted so lunch and late night are more common
+- Plain HTML templates
+
+**Testing:** Ran it with `uvicorn` and loaded `/sample`. It showed 140 orders, $4733.77 total, $33.81 average, with Pizza Palace on top. The upload worked with the same file.
+
+**Commit:** `V1: basic working app - CSV upload, totals and top restaurants`
+
+---
+
+## Step 2: V2, improved interface and charts
+
+**Prompt:**
+> Make it look like a real app instead of plain HTML. Add a shared layout, stat cards, a monthly spending bar chart and a chart showing how much went to food vs delivery fees vs service fees vs tips. Make it work on mobile.
+
+**What AI generated:** `base.html` layout, `style.css` (cards, orange theme, responsive grid), Chart.js bar and doughnut charts, and parsing of dates and fee columns.
+
+**Problem found:** The page loaded, but both charts were **completely blank**. Chart.js was loaded from a CDN link and the browser couldn't reach it.
+
+**Follow-up prompt:**
+> The charts are blank because the CDN didn't load. Bundle Chart.js in the project so it works offline.
+
+**Fix:** Downloaded Chart.js 4.6.1 into `app/static/vendor/` and pointed the template at the local file. The charts render now.
+
+**Commit:** `V2: improved interface and charts`
+
+---
+
+## Step 3: V3, new features
+
+**Prompt:**
+> Add filters for date range and restaurant, a monthly budget that shows which months I went over, and savings tips based on my own orders like fees, late night orders and my most ordered restaurant.
+
+**What AI generated:**
+- `filter_orders()` and `savings_tips()` in `analysis.py`
+- Uploads stored in memory under a short report id (`/report/<id>`), so the filter form can re-use the data
+- Budget line on the chart, with over-budget months turned red
+- Four rule-based tips (fees, late night, favourite spot, small orders with high fees)
+
+**Problem found:** Pressing **Apply** with empty date boxes gave a **422 Unprocessable Content** error. The AI had typed the query parameters as `date`, but an empty form field sends `start=` (an empty string), which FastAPI can't convert.
+
+**Follow-up prompt:**
+> Pressing Apply with empty date fields gives a 422 error. Empty fields should just mean no filter.
+
+**Fix:** Take the parameters as strings and only convert them when they're not empty (`_to_date`, `_to_float`).
+
+**Commit:** `V3: filters, monthly budget and savings tips`
+
+**Noticed while checking the screenshot (saved for V4):** the budget shows as "600.0", there are no thousands separators ($4733.77), and the chart legend shows the wrong colour for "Spent".
+
+---
+
+## Step 4: Tests
+
+**Prompt:**
+> Write pytest tests for the parsing, the maths, the filters and the web pages, including edge cases like an empty file, a CSV with the wrong columns, other date formats and filters that match nothing. Then fix whatever fails.
+
+**Result: 15 tests, 5 failed.**
+
+| Failing test | Error |
+|---|---|
+| empty CSV | `ZeroDivisionError` (average = total / 0) |
+| date like `03/02/2026 7:15 PM` | `ValueError`, only one date format supported |
+| filters that match nothing | `ZeroDivisionError` |
+| CSV with wrong columns | `KeyError`, shows a 500 server error |
+| unknown report id | `KeyError` instead of 404 |
+
+The failing tests were committed first so the history shows the bugs before the fixes.
+
+**Commit:** `Add pytest tests (5 failing)`
+
+---
+
+## Step 5: V4, bug fixes and polish
+
+**Prompt:**
+> Fix all 5 failing tests. Show friendly error messages on the home page instead of crashes, show a "no orders match" message for empty filters, and fix the money formatting, the budget showing 600.0 and the chart legend.
+
+**What changed:**
+- Required columns are checked first, with a readable error ("Your file is missing these columns: ...")
+- Several date formats are accepted
+- Empty files and empty filter results are handled
+- 404 for unknown report ids, and a friendly message for non-CSV uploads (tested with a random binary file)
+- `utf-8-sig` decoding, so CSVs saved from Excel (which start with a hidden BOM character) still work
+- `money` template filter → `$4,733.77`
+- The budget shows as `600`, and the legend only shows the budget line
+
+**Testing:** All 15 tests pass. Also checked by hand: the binary upload shows the error, the Excel-style CSV works, the empty filter shows the message, and the wrong-columns file shows the error banner.
+
+**Commit:** `V4: fix bugs found by tests, polish`
+
+---
+
+## Step 6: Documentation
+
+**Prompt:**
+> Write the README with all the sections from the assignment, take screenshots of the app working, and write this PROMPT.md log.
+
+Screenshots were taken with a headless browser against the running app (`docs/screenshots/`).
