@@ -16,7 +16,7 @@
   </label>
   <label>Monthly budget ($)
     <input type="number" name="budget" min="0" step="10" placeholder="e.g. 300"
-           value="{{ filters.budget or '' }}">
+           value="{{ '%g'|format(filters.budget) if filters.budget else '' }}">
   </label>
   <button type="submit">Apply</button>
   <a href="?" class="muted">Reset</a>
@@ -27,21 +27,22 @@
   {% if stats.over_budget %}
     <strong>Over budget in {{ stats.over_budget|length }} month(s):</strong>
     {% for month, extra in stats.over_budget %}
-      {{ month }} (+${{ "%.2f"|format(extra) }}){% if not loop.last %}, {% endif %}
+      {{ month }} (+{{ extra|money }}){% if not loop.last %}, {% endif %}
     {% endfor %}
   {% else %}
-    <strong>Nice!</strong> You stayed under ${{ "%.0f"|format(stats.budget) }} every month.
+    <strong>Nice!</strong> You stayed under {{ stats.budget|money }} every month.
   {% endif %}
 </section>
 {% endif %}
 
+{% if stats.order_count %}
 <div class="stats">
   <div class="stat"><span class="label">Total spent</span>
-    <span class="value">${{ "%.2f"|format(stats.total_spent) }}</span></div>
+    <span class="value">{{ stats.total_spent|money }}</span></div>
   <div class="stat"><span class="label">Orders</span>
     <span class="value">{{ stats.order_count }}</span></div>
   <div class="stat"><span class="label">Average order</span>
-    <span class="value">${{ "%.2f"|format(stats.average_order) }}</span></div>
+    <span class="value">{{ stats.average_order|money }}</span></div>
 </div>
 
 <div class="grid">
@@ -58,7 +59,7 @@
     <table>
       <tr><th>Restaurant</th><th class="num">Spent</th></tr>
       {% for name, amount in stats.top_restaurants %}
-      <tr><td>{{ name }}</td><td class="num">${{ "%.2f"|format(amount) }}</td></tr>
+      <tr><td>{{ name }}</td><td class="num">{{ amount|money }}</td></tr>
       {% endfor %}
     </table>
   </section>
@@ -71,10 +72,18 @@
   </ul>
 </section>
 
+{% else %}
+<section class="card empty">
+  <h2>No orders match these filters</h2>
+  <p class="muted">Try a wider date range or pick "All restaurants".</p>
+</section>
+{% endif %}
+
 <p><a href="/" class="button-link">← Upload another file</a></p>
 {% endblock %}
 
 {% block scripts %}
+{% if stats.order_count %}
 <!-- Chart.js 4.6.1 is bundled locally so the charts work offline -->
 <script src="/static/vendor/chart.umd.min.js"></script>
 <script>
@@ -93,7 +102,8 @@
   }
   new Chart(document.getElementById("monthChart"), {
     data: { labels: monthly.map(m => m[0]), datasets: datasets },
-    options: { plugins: { legend: { display: !!budget } } }
+    options: { plugins: { legend: { display: !!budget,
+      labels: { filter: item => item.text === "Budget" } } } }
   });
 
   new Chart(document.getElementById("feeChart"), {
@@ -108,4 +118,5 @@
     }
   });
 </script>
+{% endif %}
 {% endblock %}

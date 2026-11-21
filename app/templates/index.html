@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <section class="card hero">
+  {% if error %}<div class="error">⚠️ {{ error }}</div>{% endif %}
   <h1>How much is food delivery really costing you?</h1>
   <p>Upload your order history as a CSV and BiteBudget breaks down your spending:
      totals, favourite restaurants, monthly trends and how much goes to fees.</p>

@@ -3,7 +3,7 @@ from datetime import date
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, File, Request, UploadFile
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -16,6 +16,8 @@ SAMPLE = BASE.parent / "sample_data" / "sample_orders.csv"
 app = FastAPI(title="BiteBudget")
 app.mount("/static", StaticFiles(directory=BASE / "static"), name="static")
 templates = Jinja2Templates(directory=BASE / "templates")
+# money filter: 4733.77 -> $4,733.77
+templates.env.filters["money"] = lambda x: f"${x:,.2f}"
 
 # Uploaded order lists are kept in memory so the filters can re-use them.
 # They disappear when the server restarts.
@@ -27,11 +29,26 @@ def home(request: Request):
     return templates.TemplateResponse(request, "index.html")
 
 
+def error_page(request, message, status=400):
+    return templates.TemplateResponse(
+        request, "index.html", {"error": message}, status_code=status)
+
+
 @app.post("/analyze")
-async def analyze(file: UploadFile = File(...)):
-    text = (await file.read()).decode("utf-8")
+async def analyze(request: Request, file: UploadFile = File(...)):
+    try:
+        # utf-8-sig also handles the hidden BOM character Excel adds to CSVs
+        text = (await file.read()).decode("utf-8-sig")
+        orders = parse_orders(text)
+    except UnicodeDecodeError:
+        return error_page(request, "That doesn't look like a CSV file. Please upload a .csv export.")
+    except ValueError as e:
+        return error_page(request, str(e))
+    if not orders:
+        return error_page(request, "The file has the right columns but no orders in it.")
+
     report_id = uuid.uuid4().hex[:8]
-    REPORTS[report_id] = parse_orders(text)
+    REPORTS[report_id] = orders
     return RedirectResponse(f"/report/{report_id}", status_code=303)
 
 
@@ -58,7 +75,12 @@ def report(
     restaurant: Optional[str] = None,
     budget: Optional[str] = None,
 ):
-    start, end, budget = _to_date(start), _to_date(end), _to_float(budget)
+    if report_id not in REPORTS:
+        raise HTTPException(404, "Report not found. It may have expired when the server restarted.")
+    try:
+        start, end, budget = _to_date(start), _to_date(end), _to_float(budget)
+    except ValueError:
+        raise HTTPException(400, "Invalid date or budget value.")
     orders = REPORTS[report_id]
     filtered = filter_orders(orders, start, end, restaurant or None)
     restaurants = sorted({o["restaurant"] for o in orders})

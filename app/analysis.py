@@ -5,22 +5,52 @@ import io
 from collections import defaultdict
 from datetime import datetime
 
+REQUIRED_COLUMNS = ["date", "restaurant", "total"]
 FEE_COLUMNS = ["subtotal", "delivery_fee", "service_fee", "tip"]
 LATE_NIGHT_HOURS = {22, 23, 0, 1, 2, 3}
+DATE_FORMATS = [
+    "%Y-%m-%d %H:%M",
+    "%Y-%m-%d %H:%M:%S",
+    "%Y-%m-%d",
+    "%m/%d/%Y %I:%M %p",
+    "%m/%d/%Y %H:%M",
+    "%m/%d/%Y",
+]
+
+
+def parse_date(value):
+    """Try a few common date formats (apps export dates differently)."""
+    value = value.strip()
+    for fmt in DATE_FORMATS:
+        try:
+            return datetime.strptime(value, fmt)
+        except ValueError:
+            pass
+    raise ValueError(f"Couldn't read the date '{value}'")
 
 
 def parse_orders(text):
-    """Turn CSV text into a list of order dicts."""
+    """Turn CSV text into a list of order dicts.
+    Raises ValueError with a readable message if the file isn't usable."""
     reader = csv.DictReader(io.StringIO(text))
+    columns = [c.strip().lower() for c in (reader.fieldnames or [])]
+    missing = [c for c in REQUIRED_COLUMNS if c not in columns]
+    if missing:
+        raise ValueError(f"Your file is missing these columns: {', '.join(missing)}")
+
     orders = []
-    for row in reader:
-        order = {
-            "date": datetime.strptime(row["date"], "%Y-%m-%d %H:%M"),
-            "restaurant": row["restaurant"],
-            "total": float(row["total"]),
-        }
+    for line_no, raw in enumerate(reader, start=2):
+        row = {k.strip().lower(): (v or "").strip() for k, v in raw.items() if k}
+        try:
+            order = {
+                "date": parse_date(row["date"]),
+                "restaurant": row["restaurant"],
+                "total": float(row["total"].replace("$", "")),
+            }
+        except ValueError as e:
+            raise ValueError(f"Problem on line {line_no}: {e}")
         for col in FEE_COLUMNS:
-            order[col] = float(row.get(col) or 0)
+            order[col] = float((row.get(col) or "0").replace("$", ""))
         orders.append(order)
     return orders
 
@@ -61,7 +91,7 @@ def summarize(orders, budget=None):
     return {
         "order_count": len(orders),
         "total_spent": round(total, 2),
-        "average_order": round(total / len(orders), 2),
+        "average_order": round(total / len(orders), 2) if orders else 0,
         "top_restaurants": [(name, round(amt, 2)) for name, amt in top[:5]],
         "monthly": [(m, round(amt, 2)) for m, amt in months],
         "breakdown": breakdown,
@@ -73,12 +103,14 @@ def summarize(orders, budget=None):
 def savings_tips(orders):
     """Simple rules that look at the orders and suggest ways to spend less."""
     tips = []
+    if not orders:
+        return tips
     total = sum(o["total"] for o in orders)
     months = len({o["date"].strftime("%Y-%m") for o in orders})
 
     # 1. fees you'd skip by picking up
     fees = sum(o["delivery_fee"] + o["service_fee"] for o in orders)
-    if fees > 0:
+    if fees > 0 and total > 0:
         tips.append(
             f"You paid ${fees:.2f} in delivery and service fees "
             f"({fees / total * 100:.0f}% of everything you spent). "
