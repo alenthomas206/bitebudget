@@ -1,21 +1,67 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>BiteBudget - Results</title>
-</head>
-<body>
-  <h1>Your spending</h1>
-  <p>Orders: {{ stats.order_count }}</p>
-  <p>Total spent: ${{ "%.2f"|format(stats.total_spent) }}</p>
-  <p>Average order: ${{ "%.2f"|format(stats.average_order) }}</p>
-  <h2>Top restaurants</h2>
-  <table border="1">
-    <tr><th>Restaurant</th><th>Spent</th></tr>
-    {% for name, amount in stats.top_restaurants %}
-    <tr><td>{{ name }}</td><td>${{ "%.2f"|format(amount) }}</td></tr>
-    {% endfor %}
-  </table>
-  <p><a href="/">Upload another file</a></p>
-</body>
-</html>
+{% extends "base.html" %}
+{% block title %}Your spending - BiteBudget{% endblock %}
+{% block content %}
+<h1>Your spending</h1>
+
+<div class="stats">
+  <div class="stat"><span class="label">Total spent</span>
+    <span class="value">${{ "%.2f"|format(stats.total_spent) }}</span></div>
+  <div class="stat"><span class="label">Orders</span>
+    <span class="value">{{ stats.order_count }}</span></div>
+  <div class="stat"><span class="label">Average order</span>
+    <span class="value">${{ "%.2f"|format(stats.average_order) }}</span></div>
+</div>
+
+<div class="grid">
+  <section class="card wide">
+    <h2>Spending by month</h2>
+    <canvas id="monthChart"></canvas>
+  </section>
+  <section class="card">
+    <h2>Where the money goes</h2>
+    <canvas id="feeChart"></canvas>
+  </section>
+  <section class="card">
+    <h2>Top restaurants</h2>
+    <table>
+      <tr><th>Restaurant</th><th class="num">Spent</th></tr>
+      {% for name, amount in stats.top_restaurants %}
+      <tr><td>{{ name }}</td><td class="num">${{ "%.2f"|format(amount) }}</td></tr>
+      {% endfor %}
+    </table>
+  </section>
+</div>
+
+<p><a href="/" class="button-link">← Upload another file</a></p>
+{% endblock %}
+
+{% block scripts %}
+<!-- Chart.js 4.6.1 is bundled locally so the charts work offline -->
+<script src="/static/vendor/chart.umd.min.js"></script>
+<script>
+  const monthly = {{ stats.monthly | tojson }};
+  const breakdown = {{ stats.breakdown | tojson }};
+
+  new Chart(document.getElementById("monthChart"), {
+    type: "bar",
+    data: {
+      labels: monthly.map(m => m[0]),
+      datasets: [{ label: "Spent ($)", data: monthly.map(m => m[1]),
+                   backgroundColor: "#f97316" }]
+    },
+    options: { plugins: { legend: { display: false } } }
+  });
+
+  new Chart(document.getElementById("feeChart"), {
+    type: "doughnut",
+    data: {
+      labels: ["Food", "Delivery fees", "Service fees", "Tips"],
+      datasets: [{
+        data: [breakdown.subtotal, breakdown.delivery_fee,
+               breakdown.service_fee, breakdown.tip],
+        backgroundColor: ["#f97316", "#ef4444", "#a855f7", "#22c55e"]
+      }]
+    }
+  });
+</script>
+{% endblock %}

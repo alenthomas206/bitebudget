@@ -1,16 +1,21 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>BiteBudget</title>
-</head>
-<body>
-  <h1>BiteBudget</h1>
-  <p>Upload your food delivery order history (CSV) to see where your money goes.</p>
-  <form action="/analyze" method="post" enctype="multipart/form-data">
+{% extends "base.html" %}
+{% block content %}
+<section class="card hero">
+  <h1>How much is food delivery really costing you?</h1>
+  <p>Upload your order history as a CSV and BiteBudget breaks down your spending:
+     totals, favourite restaurants, monthly trends and how much goes to fees.</p>
+  <form action="/analyze" method="post" enctype="multipart/form-data" class="upload">
     <input type="file" name="file" accept=".csv" required>
-    <button type="submit">Analyze</button>
+    <button type="submit">Analyze my orders</button>
   </form>
-  <p>No file? <a href="/sample">Try the sample data</a></p>
-</body>
-</html>
+  <p class="muted">No file? <a href="/sample">Try it with sample data</a></p>
+</section>
+
+<section class="card">
+  <h2>CSV format</h2>
+  <p>Columns needed: <code>date, restaurant, total</code>.
+     Optional: <code>subtotal, delivery_fee, service_fee, tip</code>.</p>
+  <pre>date,restaurant,subtotal,delivery_fee,service_fee,tip,total
+2026-05-01 12:30,Burger Barn,18.50,2.99,2.78,3,27.27</pre>
+</section>
+{% endblock %}
