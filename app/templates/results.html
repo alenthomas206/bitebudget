@@ -3,6 +3,38 @@
 {% block content %}
 <h1>Your spending</h1>
 
+<form method="get" class="card filters">
+  <label>From <input type="date" name="start" value="{{ filters.start or '' }}"></label>
+  <label>To <input type="date" name="end" value="{{ filters.end or '' }}"></label>
+  <label>Restaurant
+    <select name="restaurant">
+      <option value="">All restaurants</option>
+      {% for r in restaurants %}
+      <option value="{{ r }}" {% if r == filters.restaurant %}selected{% endif %}>{{ r }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Monthly budget ($)
+    <input type="number" name="budget" min="0" step="10" placeholder="e.g. 300"
+           value="{{ filters.budget or '' }}">
+  </label>
+  <button type="submit">Apply</button>
+  <a href="?" class="muted">Reset</a>
+</form>
+
+{% if stats.budget %}
+<section class="card budget {% if stats.over_budget %}over{% else %}under{% endif %}">
+  {% if stats.over_budget %}
+    <strong>Over budget in {{ stats.over_budget|length }} month(s):</strong>
+    {% for month, extra in stats.over_budget %}
+      {{ month }} (+${{ "%.2f"|format(extra) }}){% if not loop.last %}, {% endif %}
+    {% endfor %}
+  {% else %}
+    <strong>Nice!</strong> You stayed under ${{ "%.0f"|format(stats.budget) }} every month.
+  {% endif %}
+</section>
+{% endif %}
+
 <div class="stats">
   <div class="stat"><span class="label">Total spent</span>
     <span class="value">${{ "%.2f"|format(stats.total_spent) }}</span></div>
@@ -32,6 +64,13 @@
   </section>
 </div>
 
+<section class="card tips">
+  <h2>💡 Ways to save</h2>
+  <ul>
+    {% for tip in tips %}<li>{{ tip }}</li>{% endfor %}
+  </ul>
+</section>
+
 <p><a href="/" class="button-link">← Upload another file</a></p>
 {% endblock %}
 
@@ -42,14 +81,19 @@
   const monthly = {{ stats.monthly | tojson }};
   const breakdown = {{ stats.breakdown | tojson }};
 
+  const budget = {{ (stats.budget or 0) | tojson }};
+  const datasets = [{
+    type: "bar", label: "Spent ($)", data: monthly.map(m => m[1]),
+    // months over budget turn red
+    backgroundColor: monthly.map(m => budget && m[1] > budget ? "#ef4444" : "#f97316")
+  }];
+  if (budget) {
+    datasets.push({ type: "line", label: "Budget", data: monthly.map(() => budget),
+                    borderColor: "#1f2937", borderDash: [6, 4], pointRadius: 0 });
+  }
   new Chart(document.getElementById("monthChart"), {
-    type: "bar",
-    data: {
-      labels: monthly.map(m => m[0]),
-      datasets: [{ label: "Spent ($)", data: monthly.map(m => m[1]),
-                   backgroundColor: "#f97316" }]
-    },
-    options: { plugins: { legend: { display: false } } }
+    data: { labels: monthly.map(m => m[0]), datasets: datasets },
+    options: { plugins: { legend: { display: !!budget } } }
   });
 
   new Chart(document.getElementById("feeChart"), {
