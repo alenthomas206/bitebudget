@@ -1,0 +1,105 @@
+{# Paste text -> fill in the add form (one expense) or show a list to tick (several). #}
+<details class="paste" id="paste">
+  <summary>Paste a bank alert, receipt or email instead</summary>
+  <div class="paste-body">
+    <label for="paste-text" class="visually-hidden">Text to read</label>
+    <textarea id="paste-text" rows="5"
+      placeholder="e.g. You spent $23.40 at NORTHSIDE MARKET on Nov 20 with your Visa ending 4417.
+
+or a few lines copied from online banking:
+Nov 18  NORTHSIDE MARKET  $58.15
+Nov 19  SPOTIFY  $11.99"></textarea>
+    <div class="paste-actions">
+      <button type="button" id="paste-read">Read it</button>
+      <span class="hint">Nothing is saved until you check it.</span>
+    </div>
+    <p class="paste-msg" id="paste-msg" role="status"></p>
+    <div id="paste-list"></div>
+  </div>
+</details>
+
+<script>
+(function () {
+  const CATS = {{ CATEGORIES | list | tojson }};
+  const box = document.getElementById("paste-text");
+  const msg = document.getElementById("paste-msg");
+  const list = document.getElementById("paste-list");
+
+  function say(text, bad) {
+    msg.textContent = text;
+    msg.classList.toggle("bad", !!bad);
+  }
+
+  // escape text before putting it inside HTML
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  function fillForm(e) {
+    const form = document.getElementById("add-form");  // the add form comes after this box on the page
+    form.description.value = e.description === "Unknown" ? "" : e.description;
+    form.amount.value = e.amount.toFixed(2);
+    form.category.value = e.category;
+    form.day.value = e.date;
+    [form.description, form.amount, form.category, form.day].forEach(f => {
+      f.classList.remove("filled"); void f.offsetWidth; f.classList.add("filled");
+    });
+    list.innerHTML = "";
+    say(e.description === "Unknown"
+      ? "Found the amount and date, but not the store. Type what it was, then press Add expense."
+      : "Filled in the form below. Check it, then press Add expense.");
+    form.description.focus();
+  }
+
+  function showList(items) {
+    const options = c => CATS.map(n => `<option${n === c ? " selected" : ""}>${n}</option>`).join("");
+    list.innerHTML = `
+      <table class="paste-table">
+        <thead><tr><th><span class="visually-hidden">Add</span></th><th>Date</th><th>What</th><th>Category</th><th class="num">Amount</th></tr></thead>
+        <tbody>${items.map((e, i) => `
+          <tr>
+            <td><input type="checkbox" checked aria-label="Add row ${i + 1}"></td>
+            <td><input type="date" value="${e.date}"></td>
+            <td><input type="text" value="${esc(e.description)}" maxlength="80"></td>
+            <td><select>${options(e.category)}</select></td>
+            <td class="num"><input type="text" inputmode="decimal" value="${e.amount.toFixed(2)}"></td>
+          </tr>`).join("")}
+        </tbody>
+      </table>
+      <button type="button" id="paste-add">Add selected</button>`;
+    say(`Found ${items.length} transactions. Untick any you don't want, fix anything that's off, then add them.`);
+
+    const addBtn = document.getElementById("paste-add");
+    const update = () => {
+      const n = list.querySelectorAll("tbody input[type=checkbox]:checked").length;
+      addBtn.textContent = n ? `Add ${n} selected` : "Nothing selected";
+      addBtn.disabled = !n;
+    };
+    list.querySelectorAll("tbody input[type=checkbox]").forEach(c => c.addEventListener("change", update));
+    update();
+
+    addBtn.addEventListener("click", async () => {
+      const rows = [...list.querySelectorAll("tbody tr")].filter(r => r.querySelector("input[type=checkbox]").checked);
+      const payload = rows.map(r => {
+        const [ , date, desc, amount] = r.querySelectorAll("input");
+        return { date: date.value, description: desc.value, amount: amount.value,
+                 category: r.querySelector("select").value };
+      });
+      addBtn.disabled = true;
+      const res = await fetch("/expenses/bulk", { method: "POST",
+        headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      const data = await res.json();
+      if (res.ok) { location.href = data.redirect; }
+      else { say(data.error, true); addBtn.disabled = false; }
+    });
+  }
+
+  document.getElementById("paste-read").addEventListener("click", async () => {
+    say("Reading...");
+    list.innerHTML = "";
+    const res = await fetch("/extract", { method: "POST", body: new URLSearchParams({ text: box.value }) });
+    const data = await res.json();
+    if (!res.ok) { say(data.error, true); return; }
+    if (data.expenses.length === 1) fillForm(data.expenses[0]);
+    else showList(data.expenses);
+  });
+})();
+</script>

@@ -2,13 +2,14 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import Body, FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from app import db
 from app.analysis import CATEGORIES, filter_expenses, parse_csv, savings_tips, summarize
+from app.extractor import extract
 
 BASE = Path(__file__).resolve().parent
 SAMPLE = BASE.parent / "sample_data" / "sample_expenses.csv"
@@ -100,6 +101,7 @@ def home(
     added: Optional[int] = None,
     imported: Optional[int] = None,
     deleted: Optional[int] = None,
+    bulk: Optional[int] = None,
 ):
     notice = None
     if added:
@@ -108,6 +110,8 @@ def home(
             notice = f"Added {e['description']}, ${e['amount']:,.2f} ({e['category']})."
     elif imported:
         notice = f"Imported {imported} expenses."
+    elif bulk:
+        notice = f"Added {bulk} expense{'s' if bulk != 1 else ''} from your pasted text."
     elif deleted:
         notice = "Expense deleted."
     start, end, category, budget = _read_filters(start, end, category, budget)
@@ -125,22 +129,53 @@ def add_expense(
 ):
     form = {"description": description, "amount": amount, "category": category, "day": day}
     try:
-        desc = description.strip()
-        if not desc:
-            raise ValueError("Enter what the expense was for.")
-        if category not in CATEGORIES:
-            raise ValueError("Pick a category.")
-        try:
-            when = datetime.fromisoformat(day) if day else datetime.now()
-        except ValueError:
-            raise ValueError("That date doesn't look right.")
-        expense = {"description": desc[:80], "amount": _money(amount),
-                   "category": category, "date": when}
+        expense = _check_expense(description, amount, category, day)
     except ValueError as e:
         return render_home(request, error=str(e), form=form, status=400)
 
     expense_id = db.add_expense(expense)
     return RedirectResponse(f"/?added={expense_id}", status_code=303)
+
+
+def _check_expense(description, amount, category, day):
+    """Validate one expense from a form or from the extractor. Raises ValueError."""
+    desc = (description or "").strip()
+    if not desc:
+        raise ValueError("Enter what the expense was for.")
+    if category not in CATEGORIES:
+        raise ValueError("Pick a category.")
+    try:
+        when = datetime.fromisoformat(day) if day else datetime.now()
+    except ValueError:
+        raise ValueError("That date doesn't look right.")
+    return {"description": desc[:80], "amount": _money(str(amount)),
+            "category": category, "date": when}
+
+
+@app.post("/extract")
+def extract_text(text: str = Form("")):
+    """Read pasted text and return the expenses found. Nothing is saved yet."""
+    known = {d.lower(): c for d, c in db.past_descriptions()}
+    expenses, problem = extract(text, known=known)
+    if problem:
+        return JSONResponse({"error": problem}, status_code=422)
+    return {"expenses": expenses}
+
+
+@app.post("/expenses/bulk")
+def add_many(items: list = Body(...)):
+    """Save several expenses at once (the ones ticked after pasting a statement)."""
+    if not items or len(items) > 200:
+        return JSONResponse({"error": "Pick between 1 and 200 expenses."}, status_code=422)
+    checked = []
+    for i, item in enumerate(items, start=1):
+        try:
+            checked.append(_check_expense(item.get("description"), item.get("amount"),
+                                          item.get("category"), item.get("date")))
+        except (ValueError, AttributeError) as e:
+            return JSONResponse({"error": f"Row {i}: {e}"}, status_code=422)
+    count = db.add_expenses(checked)
+    return {"added": count, "redirect": f"/?bulk={count}"}
 
 
 @app.post("/expenses/{expense_id}/delete")

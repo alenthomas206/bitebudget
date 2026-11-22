@@ -220,3 +220,38 @@ I set it up on my own laptop. Two problems came up:
 3. A test failed because the page shows "doesn't" as `doesn&#39;t` (HTML escaping). The app was right and the test was wrong, so the test was fixed.
 
 **Testing:** 29 tests pass. Also tested the real upgrade path: started Tally with a V6 database containing 6 delivery orders. They showed up as "Eating out" expenses, then I added rent, transit, groceries, a phone bill, a movie and an online order through the form in a browser.
+
+---
+
+## Step 11: V8, paste-text extractor
+
+**My prompt:**
+> so what can we upgrade rn
+
+**AI response:** It suggested edit expenses, recurring expenses, budgets per category, and income with a savings goal.
+
+> or just we can do a extractor??
+
+**AI response:** It asked what to extract from: a receipt photo (would need Gemini and an API key), pasted text, a bank statement PDF, or photo plus text.
+
+> *(picked "Pasted text")*
+
+**What the AI did:**
+- `app/extractor.py`: plain rules (regular expressions), no AI or API key, so it works offline and pasted text never leaves the computer
+  - **Amount:** scores every dollar amount by its line. "total", "spent" and "paid" score up; "subtotal", "tax", "tip", "fee", "balance" and "change" score down. If it's a tie, the biggest amount wins.
+  - **Store:** looks for patterns like "at X", "receipt for X", "order from X", "payment to X" and "Your X receipt", then tidies the name ("SHOPPERS DRUG MART #1234" → "Shoppers Drug Mart")
+  - **Date:** `2026-11-20`, `11/20/2026`, `Nov 20, 2026`, `20 Nov`, "today", "yesterday". With no year it picks the most recent date that isn't in the future.
+  - **Category:** your past expenses first, then keywords (pharmacy → Health, Presto → Transport)
+  - Several lines that each have a date and an amount are read as a list of transactions
+- `POST /extract` returns what was found without saving anything. `POST /expenses/bulk` saves the ticked rows, and if any row is invalid, none are saved.
+- Paste box on the add form. One expense fills in the form (the fields flash green); several show a table with checkboxes where the date, name, category and amount can still be edited.
+
+**Problems found while testing with realistic texts:**
+1. Uber Eats email: the store came out as **"Unknown"** because the email says "Here's your receipt for Pizza Palace". A "receipt for X" pattern was added.
+2. Spotify receipt: **"Unknown"** for "Your Spotify Premium receipt". A "Your X receipt" pattern was added, but it still failed. The pattern only matched a lowercase "your", so it was changed to `[Yy]our`.
+3. "You paid $14.20 at Campus Shawarma yesterday" gave the store as **"Campus Shawarma yesterday"**. "today" and "yesterday" now end the store name.
+4. Bank statement lines kept codes like **"Spotify P1234"**. Trailing codes with numbers are now removed, as long as a real word is left.
+
+Things that worked the first time: picking $19.75 over the subtotal, HST, card line and change on a store receipt; an e-transfer to a landlord with memo "rent" filed as Rent; skipping the "Available balance" line in a statement.
+
+**Testing:** 19 new tests in `tests/test_extractor.py`, 48 in total, all passing. Also tested in a real browser: pasted a bank alert → the form filled in → saved. Pasted 5 statement lines → unticked one, changed 7-Eleven to Eating out → "Added 4 expenses from your pasted text". No JavaScript errors.

@@ -351,3 +351,50 @@ pre { background: var(--paper); padding: 14px; border-radius: 10px; overflow-x: 
 .chip.want { background: var(--want); }
 .recent li { grid-template-columns: 70px 1fr auto auto; }
 .places li { grid-template-columns: 190px 1fr 100px; }
+
+/* ---------- V8: paste text extractor ---------- */
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.paste { margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px dashed rgba(27, 31, 59, 0.25); }
+.paste summary { cursor: pointer; font-weight: 600; }
+.paste-body { margin-top: 12px; }
+.paste textarea {
+  width: 100%;
+  font: 0.9rem/1.5 var(--font-receipt);
+  color: var(--ink);
+  padding: 10px 12px;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  background: #fff;
+  resize: vertical;
+}
+.paste-actions { display: flex; align-items: center; gap: 14px; margin-top: 10px; flex-wrap: wrap; }
+.paste-actions .hint { margin: 0; }
+.paste-msg { margin: 10px 0 0; font-weight: 600; }
+.paste-msg:empty { display: none; }
+.paste-msg.bad { color: var(--ketchup); }
+
+.paste-table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 0.9rem; }
+.paste-table th { text-align: left; font-size: 0.8rem; padding: 4px; }
+.paste-table td { padding: 4px; }
+.paste-table input[type="text"], .paste-table input[type="date"], .paste-table select {
+  width: 100%;
+  font: 0.9rem var(--font-body);
+  padding: 6px 8px;
+  border: 1.5px solid var(--ink);
+  border-radius: 8px;
+  background: #fff;
+}
+.paste-table .num input { font-family: var(--font-receipt); text-align: right; width: 90px; }
+.paste-table input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--ink); }
+
+/* fields filled in from pasted text flash green once */
+@keyframes filled { from { background: #dff0e1; } to { background: #fff; } }
+.add-form .filled { animation: filled 1.6s ease-out; }
+@media (prefers-reduced-motion: reduce) { .add-form .filled { animation: none; } }
+
+@media (max-width: 700px) {
+  .paste-table thead { display: none; }
+  .paste-table tr { display: grid; grid-template-columns: 28px 1fr 1fr; gap: 4px; padding: 8px 0;
+                    border-bottom: 1px solid rgba(27, 31, 59, 0.1); }
+  .paste-table td:nth-child(3) { grid-column: 2 / -1; }
+}
