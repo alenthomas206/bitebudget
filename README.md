@@ -211,37 +211,33 @@ This turned BiteBudget into Tally (V7): categories, needs vs wants, and tips tha
 
 ## Vibe Coding Reflection
 
-> ✏️ **Draft. Alen: rewrite this in your own words before submitting.** The facts below are what actually happened during development. Add your own opinions and anything you noticed when you tried the app.
+ Building Tally using vibe coding was an interesting experience for me. At first, I only wanted to create a simple app to track food delivery expenses. But as I continued working on it, I realized that tracking all expenses would be more useful.
+
+I used Claude AI to generate code, add features, fix errors and improve the design. Instead of writing everything myself, I explained what I wanted in simple words. Sometimes AI understood my instructions correctly, but other times I had to explain things again or make changes.
+
+One thing I noticed was that AI could build features quickly, but that did not mean everything worked perfectly. I found errors while testing the app, especially with charts, date filters and CSV files. This helped me understand why testing is important.
+
+My prompts also improved throughout the project. In the beginning, I gave general instructions, but later I became more specific about the features and problems. I also learned that even a small suggestion can completely change an application.
+
+Overall, vibe coding helped me turn my idea into a working application much faster. I learned that AI can help write code, but human thinking, creativity and testing are still important. The biggest lesson for me was that building an app is not just about making it work, but also making sure it is useful and easy for people to use.
 
 ### 1. What did AI do particularly well?
 
-It was really fast at the boring setup parts. The whole first version (FastAPI routes, templates, sample data generator) came from one prompt and worked the first time. It also wrote the 15 tests in one go, which I probably wouldn't have bothered doing that thoroughly myself. *[Add your own example]*
+AI helped me build the app much faster. It created the basic structure, wrote code, designed pages and added features from my instructions. It also helped me write tests and fix errors. I liked how I could explain an idea in simple words and AI could turn it into a working feature. This saved me a lot of time.
 
 ### 2. What did AI do poorly?
-
-- In V2 it loaded Chart.js from a CDN link and the charts came out completely blank when the browser couldn't reach the internet. It had to be changed to a local copy of Chart.js.
-- In V3 it typed the date filters as `date` in FastAPI, but an empty date box sends an empty string, so pressing "Apply" without picking dates gave a 422 error.
-- The original code assumed every file would be perfect. An empty file or a file with different columns just crashed the app (5 tests failed).
+AI sometimes created code that looked correct but did not work properly. For example, the charts were blank because Chart.js needed an internet connection. The app also had problems with empty date fields and incorrect CSV files. I realized that AI does not always think about how real users will use an app. Some problems were only found when I tested it myself.
 
 ### 3. How did you verify AI-generated code?
-
-- Ran the app after every version and clicked through it with the sample data
-- Took screenshots to check the charts and layout actually rendered
-- Wrote pytest tests, including edge cases, and only moved on once they all passed
-- Checked a few numbers by hand (for example, the small test CSV: 25 + 15.50 + 39.50 = $80.00)
-
-*[Add anything you tested yourself]*
+I ran the application after each version and tested the features myself. I checked the forms, charts, filters and expense calculations. I also used sample data to see if the results were correct. I ran pytest tests to find errors, including problems with empty files and invalid dates. When something did not work, I explained the issue to AI and tested the changes again. I also tested the paste feature with a real Uber receipt from my email. The amount and date were right, but it picked "Uber One credits earned" as the store name, so I showed AI the problem and had it fixed. The AI's own tests had all passed, so I would not have found that bug without trying it with my real data.
 
 ### 4. How did your prompts evolve?
-
-Early prompts were broad, like "build an app that analyzes my delivery spending". Later prompts got much more specific: they named the exact bug (empty date fields cause a 422), listed the edge cases to test, and said exactly how something should look (months over budget in red with a dashed budget line). Specific prompts got the right result the first time; vague ones needed more back and forth.
-
-*[Add your own take: the biggest changes came from my own short prompts ("make it practical", "who would carry a lot of csv", "a budgeting app is not just about delivery"). They weren't technical at all, but they changed what the app is for.]*
+In the beginning, my prompts were simple and general. I mainly explained what I wanted the app to do. As I continued building, I started giving more detailed instructions and explaining problems clearly. For example, I realized that asking users to upload CSV files every time was not practical. So I asked AI to make the app easier to use by allowing users to enter expenses manually. I learned that clear instructions usually give better results.
 
 ### 5. What did you learn?
 
-*[Your own words. Ideas: how FastAPI handles query parameters, why testing edge cases matters, how Jinja templates work, or that AI code "working" on the happy path doesn't mean it's finished.]*
+I learned that building an application is not just about writing code. It is also about understanding what users actually need. My original idea was only about tracking food delivery, but while testing it, I realized that people need to understand all their expenses. I also learned how important testing, debugging and improving the user experience are. Most importantly, I learned that AI can help with development, but I still need to make decisions and check the results.
 
 ### 6. Would you trust AI to build the entire application without human supervision?
 
-*[Your opinion.]* Things to consider: the app looked finished after V3 but still crashed on empty files and on an empty form field. Those only got caught because tests and manual checks were asked for. Without someone checking, those bugs would have gone straight to users.
+No, I would not fully trust AI to build an application without human supervision. AI is useful and can write code quickly, but it can also make mistakes. In my project, some features looked complete but had errors that were only found during testing. AI also did not always understand what would be practical for users. I believe AI should be used as a tool to support developers, while humans should guide the project, test the application and make the final decisions.
