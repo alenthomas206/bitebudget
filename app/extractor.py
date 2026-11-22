@@ -20,7 +20,7 @@ MONEY = re.compile(
 
 GOOD_WORDS = re.compile(r"\b(total|charged|spent|paid|purchase|amount|debit|payment of|you paid|order total|grand total)\b", re.I)
 BAD_WORDS = re.compile(r"\b(sub\s?-?total|tax|hst|gst|pst|tip|fee|discount|saving|savings|balance|available|"
-                       r"credit limit|points|reward|cashback|change|tendered|promo)\b", re.I)
+                       r"credit limit|credits?|earned|points|reward|cashback|change|tendered|promo)\b", re.I)
 
 
 def _amounts(line):
@@ -38,10 +38,18 @@ def find_amount(text):
     Lines that say 'total' or 'spent' win; subtotal, tax, tip and balance lines lose.
     If it's still a tie, the biggest amount wins (a receipt's total is its largest number)."""
     best = None
+    label = ""
     for line in text.splitlines():
         amounts = _amounts(line)
         if not amounts:
+            if line.strip():
+                label = line          # remember it in case the amount is on the next line
             continue
+        # copied emails often split "Total" and "$5.81" onto separate lines,
+        # so a line that's only an amount is judged by the label above it
+        if not re.search(r"[A-Za-z]{2}", MONEY.sub("", line)):
+            line = label + " " + line
+        label = ""
         score = 0
         if GOOD_WORDS.search(line):
             score += 2
@@ -120,7 +128,22 @@ MERCHANT_PATTERNS = [
 ]
 SKIP_LINE = re.compile(r"^(subject|from|to|date|sent|re|fw|fwd)\s*:|receipt|invoice|order #|order number|"
                        r"thank|hello|hi |dear|total|subtotal|tax|tip|card|visa|mastercard|debit|"
+                       r"credit|earned|points|reward|support|help|forgot|lost|enjoy|hope|rate |"
                        r"@|https?://|www\.", re.I)
+
+# Well-known companies, recognized anywhere in the text. Used when no "at X" /
+# "receipt for X" pattern names the store (e.g. an Uber ride receipt never says "at Uber").
+# Delivery apps come first and are only used if no restaurant name was found.
+BRANDS = [
+    ("Uber Eats", r"uber ?eats"), ("DoorDash", r"door ?dash"), ("SkipTheDishes", r"skip ?the ?dishes"),
+    ("Uber", r"\buber\b"), ("Lyft", r"\blyft\b"), ("Amazon", r"\bamazon\b"),
+    ("Spotify", r"\bspotify\b"), ("Netflix", r"\bnetflix\b"), ("Apple", r"\bapple\.com|\bitunes\b"),
+    ("Steam", r"\bsteam(?:powered)?\b"), ("Tim Hortons", r"tim horton"), ("Starbucks", r"\bstarbucks\b"),
+    ("McDonald's", r"mcdonald"), ("Presto", r"\bpresto\b"), ("Walmart", r"\bwalmart\b"),
+    ("Costco", r"\bcostco\b"), ("Best Buy", r"best ?buy"), ("Dollarama", r"\bdollarama\b"),
+]
+# names that a pattern can catch but that aren't a store
+NOT_A_STORE = re.compile(r"^(your|my|the|this|our)\b|^(ride|trip|order|purchase|payment)$", re.I)
 
 
 def _tidy(name):
@@ -137,11 +160,13 @@ def _tidy(name):
 
 def find_merchant(text):
     for pattern in MERCHANT_PATTERNS:
-        m = pattern.search(text)
-        if m:
+        for m in pattern.finditer(text):
             name = _tidy(m.group("m"))
-            if len(name) >= 2 and not MONEY.fullmatch(name):
+            if len(name) >= 2 and not MONEY.fullmatch(name) and not NOT_A_STORE.search(name):
                 return name
+    for name, pattern in BRANDS:
+        if re.search(pattern, text, re.I):
+            return name
     # fallback: first short line that isn't a heading, amount, date or greeting
     for line in text.splitlines():
         line = line.strip()

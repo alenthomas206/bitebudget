@@ -167,3 +167,45 @@ def test_bulk_add_limits():
 
 def test_paste_box_is_on_the_page():
     assert "Paste a bank alert, receipt or email instead" in client.get("/").text
+
+
+# ---------- found by Alen testing a real Uber ride receipt (V8.1) ----------
+
+UBER_RIDE = """November 2, 2026
+Here's your receipt for your ride, Alen
+We hope you enjoyed your ride this afternoon.
+Total
+$5.81
+$0.25
+Uber One credits earned
+Trip fare
+$4.27
+Est. insurance and payments costs
+$0.84
+HST
+$0.70
+TNC Fees Recovery Surcharge
+$0.16
+Wait Time
+$0.08
+Our support team is happy to help with any concern you might have.
+Forgot something?
+If you lost an item in the car, please report it using the link below."""
+
+
+def test_uber_ride_receipt():
+    # used to come out as "Uber One credits earned"
+    e = one(UBER_RIDE)
+    assert (e["description"], e["amount"], e["date"], e["category"]) == \
+        ("Uber", 5.81, "2026-11-02", "Transport")
+
+
+def test_label_and_amount_on_separate_lines():
+    assert find_amount("Total\n$5.81\nAvailable balance\n$1,204.33") == 5.81
+    assert find_amount("Subtotal\n$31.50\nTip\n$40.00\nTotal\n$75.49") == 75.49
+
+
+def test_restaurant_name_beats_delivery_app_name():
+    e = one("Uber Eats\nHere's your receipt for Pizza Palace.\nTotal $44.22")
+    assert e["description"] == "Pizza Palace"
+    assert one("Your DoorDash order\nTotal $18.20")["description"] == "DoorDash"

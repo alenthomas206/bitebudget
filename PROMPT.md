@@ -255,3 +255,26 @@ I set it up on my own laptop. Two problems came up:
 Things that worked the first time: picking $19.75 over the subtotal, HST, card line and change on a store receipt; an e-transfer to a landlord with memo "rent" filed as Rent; skipping the "Available balance" line in a statement.
 
 **Testing:** 19 new tests in `tests/test_extractor.py`, 48 in total, all passing. Also tested in a real browser: pasted a bank alert → the form filled in → saved. Pasted 5 statement lines → unticked one, changed 7-Eleven to Eating out → "Added 4 expenses from your pasted text". No JavaScript errors.
+
+---
+
+## Step 12: V8.1, testing the extractor with my own Uber receipt
+
+**My prompts:**
+> but there might be debate actually like if you can upload your receipts and get it that basically means you have knowledge of ur spending
+
+**AI response:** Having receipts isn't the same as knowing your total spending. They're scattered across emails, texts and paper, and patterns like "wants are 35% of my spending" only show up when everything is in one place. The extractor exists to make logging less annoying, and the analysis is the value. It agreed with the weak spot underneath my point, though: Tally still depends on remembering to log things, and real budgeting apps fix that with automatic bank sync.
+
+Then I tested it for real: I copied the text of an actual Uber ride receipt email into the paste box *(sent screenshots of the receipt and the result)*.
+
+**Problem found:** The amount ($5.81 total, not the $4.27 trip fare or the $0.25 credits), the date (Nov 2) and the category (Transport) were right, but the store came out as **"Uber One credits earned"**. Nothing in the email says "at Uber" or "receipt from Uber", so the extractor fell back to the first short line that looked like a name.
+
+**Fixes:**
+- A list of well-known companies (Uber, Lyft, DoorDash, Amazon, Spotify, Tim Hortons, ...) is recognized anywhere in the text before the fallback. A restaurant name from "receipt for X" still wins over the delivery app's name.
+- Pattern matches like "your ride" or "your order" are rejected as store names
+- The fallback skips lines about credits, points, rewards, support or lost items
+- "credits" and "earned" lines no longer count as the amount paid
+
+**Second problem found while fixing it:** In copied emails the label and the amount are often on **separate lines** ("Total", then "$5.81" on the next line). The extractor judged each line on its own words, so it only got the Uber total right because $5.81 happened to be the biggest number. An email that also had "Available balance" / "$1,204.33" would have picked the balance. Now a line that's only an amount is judged by the label on the line above it.
+
+**Testing:** My Uber receipt is now a permanent test, plus tests for split label/amount lines and restaurant name vs app name. 51 tests pass.
