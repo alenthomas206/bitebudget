@@ -159,7 +159,7 @@ The full prompt log is in [PROMPT.md](PROMPT.md). Three prompts that shaped the 
 
 > **1.** "Write pytest tests for the parsing, the maths, the filters and the web pages, including edge cases like an empty file, a CSV with the wrong columns, other date formats and filters that match nothing. Then fix whatever fails."
 
-5 of the 15 tests failed at first. The app looked finished, but it crashed on empty files, other date formats and bad columns. Fixing those is what V4 is about.
+*(This one was a step instruction Claude wrote while building V4. The other two are my own prompts.)* 5 of the 15 tests failed at first. The app looked finished, but it crashed on empty files, other date formats and bad columns. Fixing those is what V4 is about.
 
 > **2.** "ok so this is v5 but now lets make it practical" ... "i mean who would carry a lot of csv for their data"
 

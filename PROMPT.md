@@ -1,22 +1,14 @@
 # PROMPT.md: Development Log
 
-This is the full log of how BiteBudget was built with AI (Claude). Each step lists the prompt or request, what the AI produced, and what happened when it was run and tested. The matching commits are in the GitHub history.
+This is the full log of how Tally (first called BiteBudget) was built with AI (Claude). Each step lists the prompt, what the AI produced, and what happened when it was run and tested. The matching commits are in the GitHub history.
 
-**How this was run:** Step 0 is my own messages. After that I had Claude build the app as an agent on my laptop while I was away, one version at a time. The prompts in Steps 1–6 are the instructions for each step, which Claude wrote based on my request and the assignment brief and then carried out. Whenever something broke, the follow-up prompt describes the bug that was found and what to do about it.
+**How Steps 1–6 were done:** Claude worked as a coding agent on my laptop. For each version it wrote the instruction for that step, built it, tested it and committed it. Those instructions are labelled "Step instruction (written by Claude)". From Step 7 on, the prompts are my own.
 
 ---
 
 ## Step 0: Getting started
 
-**Prompt:**
-> Since u have access to my lap there is a vibe coding assignment that needs to be done
->
-> *(attached the assignment PDF)*
-
-**Follow-up answers to the AI's questions:**
-> - App idea: no preference
-> - Due: tomorrow
-> - Stack: Python + Flask/FastAPI
+I gave Claude the assignment brief (PDF) and asked it to build the project. Claude asked what to build, when it was due and which stack to use. I left the idea to Claude, said it was due the next day, and picked Python + FastAPI.
 
 **AI response:** Suggested a food delivery spending analyzer called **BiteBudget**, because I already wanted to build an Uber Eats spending analyzer. It planned four versions to match the assignment's iteration requirement: basic app → better UI → new features → tests and fixes.
 
@@ -26,7 +18,7 @@ This is the full log of how BiteBudget was built with AI (Claude). Each step lis
 
 ## Step 1: V1, basic working app
 
-**Prompt:**
+**Step instruction (written by Claude):**
 > Build a FastAPI web app where I upload my food delivery order history as a CSV and it shows total spent, number of orders, average order and my top 5 restaurants. Include sample data so it can be tried without a real file.
 
 **What AI generated:**
@@ -43,14 +35,14 @@ This is the full log of how BiteBudget was built with AI (Claude). Each step lis
 
 ## Step 2: V2, improved interface and charts
 
-**Prompt:**
+**Step instruction (written by Claude):**
 > Make it look like a real app instead of plain HTML. Add a shared layout, stat cards, a monthly spending bar chart and a chart showing how much went to food vs delivery fees vs service fees vs tips. Make it work on mobile.
 
 **What AI generated:** `base.html` layout, `style.css` (cards, orange theme, responsive grid), Chart.js bar and doughnut charts, and parsing of dates and fee columns.
 
 **Problem found:** The page loaded, but both charts were **completely blank**. Chart.js was loaded from a CDN link and the browser couldn't reach it.
 
-**Follow-up prompt:**
+**Follow-up instruction (written by Claude):**
 > The charts are blank because the CDN didn't load. Bundle Chart.js in the project so it works offline.
 
 **Fix:** Downloaded Chart.js 4.6.1 into `app/static/vendor/` and pointed the template at the local file. The charts render now.
@@ -61,7 +53,7 @@ This is the full log of how BiteBudget was built with AI (Claude). Each step lis
 
 ## Step 3: V3, new features
 
-**Prompt:**
+**Step instruction (written by Claude):**
 > Add filters for date range and restaurant, a monthly budget that shows which months I went over, and savings tips based on my own orders like fees, late night orders and my most ordered restaurant.
 
 **What AI generated:**
@@ -72,7 +64,7 @@ This is the full log of how BiteBudget was built with AI (Claude). Each step lis
 
 **Problem found:** Pressing **Apply** with empty date boxes gave a **422 Unprocessable Content** error. The AI had typed the query parameters as `date`, but an empty form field sends `start=` (an empty string), which FastAPI can't convert.
 
-**Follow-up prompt:**
+**Follow-up instruction (written by Claude):**
 > Pressing Apply with empty date fields gives a 422 error. Empty fields should just mean no filter.
 
 **Fix:** Take the parameters as strings and only convert them when they're not empty (`_to_date`, `_to_float`).
@@ -85,7 +77,7 @@ This is the full log of how BiteBudget was built with AI (Claude). Each step lis
 
 ## Step 4: Tests
 
-**Prompt:**
+**Step instruction (written by Claude):**
 > Write pytest tests for the parsing, the maths, the filters and the web pages, including edge cases like an empty file, a CSV with the wrong columns, other date formats and filters that match nothing. Then fix whatever fails.
 
 **Result: 15 tests, 5 failed.**
@@ -106,7 +98,7 @@ The failing tests were committed first so the history shows the bugs before the 
 
 ## Step 5: V4, bug fixes and polish
 
-**Prompt:**
+**Step instruction (written by Claude):**
 > Fix all 5 failing tests. Show friendly error messages on the home page instead of crashes, show a "no orders match" message for empty filters, and fix the money formatting, the budget showing 600.0 and the chart legend.
 
 **What changed:**
@@ -126,7 +118,7 @@ The failing tests were committed first so the history shows the bugs before the 
 
 ## Step 6: Documentation
 
-**Prompt:**
+**Step instruction (written by Claude):**
 > Write the README with all the sections from the assignment, take screenshots of the app working, and write this PROMPT.md log.
 
 Screenshots were taken with a headless browser against the running app (`docs/screenshots/`).
